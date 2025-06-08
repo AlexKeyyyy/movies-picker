@@ -65,3 +65,29 @@ func (s *Service) GetMovieReviews(id int64) ([]models.ReviewItem, error) {
 	// 2) вызвать клиент YouTube: reviews, err := youtubeClient.SearchReviews(m.Title)
 	return []models.ReviewItem{}, nil
 }
+
+// --- Watchlist ---
+func (s *Service) AddToWatchlist(userID, movieID int64) error {
+	item := &models.WatchlistItem{
+		UserID:  userID,
+		MovieID: movieID,
+	}
+	return s.repo.AddToWatchlist(item)
+}
+
+func (s *Service) GetWatchlist(userID int64) ([]models.WatchlistItem, error) {
+	return s.repo.GetWatchlist(userID)
+}
+
+func (s *Service) RemoveFromWatchlist(userID, movieID int64) error {
+	return s.repo.RemoveFromWatchlist(userID, movieID)
+}
+
+// --- Ratings ---
+func (s *Service) UpsertRating(item *models.RatingItem) error {
+	return s.repo.UpsertRating(item)
+}
+
+func (s *Service) GetRatings(userID int64) ([]models.RatingItem, error) {
+	return s.repo.GetRatings(userID)
+}
