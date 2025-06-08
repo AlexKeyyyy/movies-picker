@@ -9,6 +9,7 @@ import (
 	"github.com/AlexKeyyyy/movies-picker/internal/middleware"
 	"github.com/AlexKeyyyy/movies-picker/internal/repository"
 	"github.com/AlexKeyyyy/movies-picker/internal/service"
+	"github.com/AlexKeyyyy/movies-picker/pkg/kinopoisk"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -18,7 +19,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	svc := service.NewService(repo, cfg.JWTSecret)
+	kpClient := kinopoisk.NewClient(cfg.KinopoiskApiKey)
+	svc := service.NewService(repo, kpClient, cfg.JWTSecret)
 
 	authH := handlers.NewAuthHandler(svc)
 	moviesH := handlers.NewMoviesHandler(svc)
