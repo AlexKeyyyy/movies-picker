@@ -55,3 +55,43 @@ func (r *Repo) SearchMovies(query string) ([]models.Movie, error) {
 	err := r.db.Select(&movies, "SELECT * FROM movies WHERE title ILIKE $1", "%"+query+"%")
 	return movies, err
 }
+
+// --- Watchlist ---
+func (r *Repo) AddToWatchlist(item *models.WatchlistItem) error {
+	_, err := r.db.Exec(`
+        INSERT INTO watchlist (user_id, movie_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+		item.UserID, item.MovieID)
+	return err
+}
+
+func (r *Repo) GetWatchlist(userID int64) ([]models.WatchlistItem, error) {
+	var list []models.WatchlistItem
+	err := r.db.Select(&list, `
+        SELECT w.movie_id, w.added_at, m.title, m.poster_url
+        FROM watchlist w JOIN movies m ON w.movie_id = m.movie_id
+        WHERE w.user_id = $1`, userID)
+	return list, err
+}
+
+func (r *Repo) RemoveFromWatchlist(userID, movieID int64) error {
+	_, err := r.db.Exec(
+		"DELETE FROM watchlist WHERE user_id=$1 AND movie_id=$2",
+		userID, movieID)
+	return err
+}
+
+// --- Ratings ---
+func (r *Repo) UpsertRating(item *models.RatingItem) error {
+	_, err := r.db.Exec(`
+        INSERT INTO ratings (user_id, movie_id, rating) VALUES ($1,$2,$3)
+        ON CONFLICT (user_id,movie_id) DO UPDATE SET rating = $3, rated_at = NOW()`,
+		item.UserID, item.MovieID, item.Rating)
+	return err
+}
+
+func (r *Repo) GetRatings(userID int64) ([]models.RatingItem, error) {
+	var list []models.RatingItem
+	err := r.db.Select(&list,
+		"SELECT movie_id, rating, rated_at FROM ratings WHERE user_id=$1", userID)
+	return list, err
+}
