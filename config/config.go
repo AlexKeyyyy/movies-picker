@@ -12,6 +12,7 @@ type Config struct {
 	DBUrl           string
 	JWTSecret       string
 	KinopoiskApiKey string
+	YouTubeApiKey   string
 }
 
 func Load() *Config {
@@ -23,5 +24,6 @@ func Load() *Config {
 		DBUrl:           os.Getenv("DB_URL"),
 		JWTSecret:       os.Getenv("JWT_SECRET"),
 		KinopoiskApiKey: os.Getenv("KINOPOISK_API_KEY"),
+		YouTubeApiKey:   os.Getenv("YOUTUBE_API_KEY"),
 	}
 }

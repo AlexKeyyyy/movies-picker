@@ -10,6 +10,7 @@ import (
 	"github.com/AlexKeyyyy/movies-picker/internal/repository"
 	"github.com/AlexKeyyyy/movies-picker/internal/service"
 	"github.com/AlexKeyyyy/movies-picker/pkg/kinopoisk"
+	"github.com/AlexKeyyyy/movies-picker/pkg/youtube"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -20,7 +21,8 @@ func main() {
 		log.Fatal(err)
 	}
 	kpClient := kinopoisk.NewClient(cfg.KinopoiskApiKey)
-	svc := service.NewService(repo, kpClient, cfg.JWTSecret)
+	ytClient := youtube.NewClient(cfg.YouTubeApiKey)
+	svc := service.NewService(repo, kpClient, ytClient, cfg.JWTSecret)
 
 	authH := handlers.NewAuthHandler(svc)
 	moviesH := handlers.NewMoviesHandler(svc)

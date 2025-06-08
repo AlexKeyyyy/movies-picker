@@ -2,23 +2,26 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/AlexKeyyyy/movies-picker/internal/models"
 	"github.com/AlexKeyyyy/movies-picker/internal/repository"
 	"github.com/AlexKeyyyy/movies-picker/pkg/kinopoisk"
+	"github.com/AlexKeyyyy/movies-picker/pkg/youtube"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct {
 	repo      *repository.Repo
-	client    *kinopoisk.Client
+	kpClient  *kinopoisk.Client
+	ytClient  *youtube.Client
 	jwtSecret string
 }
 
-func NewService(repo *repository.Repo, client *kinopoisk.Client, jwtSecret string) *Service {
-	return &Service{repo: repo, client: client, jwtSecret: jwtSecret}
+func NewService(repo *repository.Repo, kp *kinopoisk.Client, yt *youtube.Client, jwtSecret string) *Service {
+	return &Service{repo: repo, kpClient: kp, ytClient: yt, jwtSecret: jwtSecret}
 }
 
 // --- Auth ---
@@ -59,7 +62,7 @@ func (s *Service) SearchMovies(query string) ([]models.Movie, error) {
 	}
 
 	// 2) Иначе — ищем по API
-	films, totalPages, err := s.client.SearchByKeyword(query, 1)
+	films, totalPages, err := s.kpClient.SearchByKeyword(query, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +75,7 @@ func (s *Service) SearchMovies(query string) ([]models.Movie, error) {
 	}
 
 	for page := 2; page <= totalPages; page++ {
-		films, _, err := s.client.SearchByKeyword(query, page)
+		films, _, err := s.kpClient.SearchByKeyword(query, page)
 		if err != nil {
 			continue
 		}
@@ -101,12 +104,30 @@ func (s *Service) GetMovie(id int64) (*models.Movie, error) {
 }
 
 // --- Reviews ---
+
+// GetMovieReviews возвращает список обзоров для фильма по его ID
 func (s *Service) GetMovieReviews(id int64) ([]models.ReviewItem, error) {
-	// пока пустой список
-	// TODO:
-	// 1) получить фильм: m, err := s.repo.GetMovieByID(id)
-	// 2) вызвать клиент YouTube: reviews, err := youtubeClient.SearchReviews(m.Title)
-	return []models.ReviewItem{}, nil
+	m, err := s.repo.GetMovieByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("movie not found: %w", err)
+	}
+
+	reviews, err := s.ytClient.SearchReviews(m.Title, 10)
+	if err != nil {
+		return nil, fmt.Errorf("youtube search failed: %w", err)
+	}
+
+	var out []models.ReviewItem
+	for _, r := range reviews {
+		out = append(out, models.ReviewItem{
+			VideoID:      r.VideoID,
+			Title:        r.Title,
+			ChannelTitle: r.ChannelTitle,
+			ThumbnailURL: r.ThumbnailURL,
+		})
+	}
+
+	return out, nil
 }
 
 // --- Watchlist ---
