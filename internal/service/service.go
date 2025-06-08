@@ -47,3 +47,21 @@ func (s *Service) Login(email, password string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(s.jwtSecret))
 }
+
+// --- Movies ---
+func (s *Service) SearchMovies(query string) ([]models.Movie, error) {
+	return s.repo.SearchMovies(query)
+}
+
+func (s *Service) GetMovie(id int64) (*models.Movie, error) {
+	return s.repo.GetMovieByID(id)
+}
+
+// --- Reviews ---
+func (s *Service) GetMovieReviews(id int64) ([]models.ReviewItem, error) {
+	// пока пустой список
+	// TODO:
+	// 1) получить фильм: m, err := s.repo.GetMovieByID(id)
+	// 2) вызвать клиент YouTube: reviews, err := youtubeClient.SearchReviews(m.Title)
+	return []models.ReviewItem{}, nil
+}
