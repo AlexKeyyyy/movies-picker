@@ -13,10 +13,8 @@ import (
 )
 
 func main() {
-	// Загрузить .env
 	_ = godotenv.Load()
 
-	// Подключиться к БД
 	dsn := os.Getenv("DB_URL")
 	if dsn == "" {
 		log.Fatal("DB_URL is not set")
@@ -26,14 +24,12 @@ func main() {
 		log.Fatalf("failed to connect to DB: %v", err)
 	}
 
-	// Создать клиента Kinopoisk
 	apiKey := os.Getenv("KINOPOISK_API_KEY")
 	if apiKey == "" {
 		log.Fatal("KINOPOISK_API_KEY is not set")
 	}
 	client := kinopoisk.NewClient(apiKey)
 
-	// Первая страница — узнаём общее число страниц
 	items, totalPages, err := client.GetPopularAll(1)
 	if err != nil {
 		log.Fatalf("failed to fetch page 1: %v", err)
@@ -41,7 +37,6 @@ func main() {
 	log.Printf("Total pages: %d", totalPages)
 	upsertFilms(repo, items)
 
-	// Остальные страницы
 	for page := 2; page <= totalPages; page++ {
 		items, _, err := client.GetPopularAll(page)
 		if err != nil {
@@ -56,7 +51,6 @@ func main() {
 
 func upsertFilms(repo *repository.Repo, films []kinopoisk.Film) {
 	for _, f := range films {
-		// конвертация года из json.Number
 		yearInt, err := strconv.Atoi(f.Year.String())
 		if err != nil {
 			yearInt = 0

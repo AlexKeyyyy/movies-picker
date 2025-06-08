@@ -53,27 +53,24 @@ func (s *Service) Login(email, password string) (string, error) {
 // --- Movies ---
 func (s *Service) SearchMovies(query string) ([]models.Movie, error) {
 	// 1) Сначала пытаемся найти в БД
-	// movies, err := s.repo.SearchMovies(query)
-	// if len(movies) > 0 {
-	// 	return movies, nil
-	// }
+	movies, err := s.repo.SearchMovies(query)
+	if len(movies) > 0 {
+		return movies, nil
+	}
 
 	// 2) Иначе — ищем по API
-	// первая страница
 	films, totalPages, err := s.client.SearchByKeyword(query, 1)
 	if err != nil {
 		return nil, err
 	}
 
 	var result []models.Movie
-	// upsert первой страницы
 	for _, f := range films {
 		m := s.mapFilmToModel(f)
 		_ = s.repo.UpsertMovie(&m)
 		result = append(result, m)
 	}
 
-	// остальные страницы
 	for page := 2; page <= totalPages; page++ {
 		films, _, err := s.client.SearchByKeyword(query, page)
 		if err != nil {
@@ -88,7 +85,6 @@ func (s *Service) SearchMovies(query string) ([]models.Movie, error) {
 	return result, nil
 }
 
-// helper: преобразование из kinopoisk.Film в models.Movie
 func (s *Service) mapFilmToModel(f kinopoisk.Film) models.Movie {
 	yearInt, _ := f.Year.Int64()
 	return models.Movie{
