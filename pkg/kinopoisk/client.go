@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -37,31 +38,63 @@ type CollectionsResponse struct {
 	Items      []Film `json:"items"`
 }
 
-func (c *Client) GetTop250Films(page int) ([]Film, error) {
-	url := fmt.Sprintf("%s/films/collections?type=TOP_250_MOVIES&page=%d", c.baseURL, page)
+// GetPopularAll получает одну страницу популярного списка
+func (c *Client) GetPopularAll(page int) ([]Film, int, error) {
+	url := fmt.Sprintf("%s/films/collections?type=TOP_POPULAR_ALL&page=%d", c.baseURL, page)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	req.Header.Set("X-API-KEY", c.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return nil, 0, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
 	dec := json.NewDecoder(resp.Body)
 	dec.UseNumber()
 
-	var result CollectionsResponse
-	if err := dec.Decode(&result); err != nil {
-		return nil, err
+	var cr CollectionsResponse
+	if err := dec.Decode(&cr); err != nil {
+		return nil, 0, err
 	}
-	return result.Items, nil
+	return cr.Items, cr.TotalPages, nil
+}
+
+// SearchByKeyword получает одну страницу по ключевому слову
+func (c *Client) SearchByKeyword(keyword string, page int) ([]Film, int, error) {
+	url := fmt.Sprintf("%s/films?type=ALL&ratingFrom=0&ratingTo=10&yearFrom=1000&yearTo=3000&keyword=%s&page=%d",
+		c.baseURL, url.QueryEscape(keyword), page)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("X-API-KEY", c.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, 0, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	dec := json.NewDecoder(resp.Body)
+	dec.UseNumber()
+
+	var cr CollectionsResponse
+	if err := dec.Decode(&cr); err != nil {
+		return nil, 0, err
+	}
+	return cr.Items, cr.TotalPages, nil
 }

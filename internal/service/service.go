@@ -6,17 +6,19 @@ import (
 
 	"github.com/AlexKeyyyy/movies-picker/internal/models"
 	"github.com/AlexKeyyyy/movies-picker/internal/repository"
+	"github.com/AlexKeyyyy/movies-picker/pkg/kinopoisk"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct {
 	repo      *repository.Repo
+	client    *kinopoisk.Client
 	jwtSecret string
 }
 
-func NewService(repo *repository.Repo, jwtSecret string) *Service {
-	return &Service{repo: repo, jwtSecret: jwtSecret}
+func NewService(repo *repository.Repo, client *kinopoisk.Client, jwtSecret string) *Service {
+	return &Service{repo: repo, client: client, jwtSecret: jwtSecret}
 }
 
 // --- Auth ---
@@ -50,7 +52,52 @@ func (s *Service) Login(email, password string) (string, error) {
 
 // --- Movies ---
 func (s *Service) SearchMovies(query string) ([]models.Movie, error) {
-	return s.repo.SearchMovies(query)
+	// 1) Сначала пытаемся найти в БД
+	// movies, err := s.repo.SearchMovies(query)
+	// if len(movies) > 0 {
+	// 	return movies, nil
+	// }
+
+	// 2) Иначе — ищем по API
+	// первая страница
+	films, totalPages, err := s.client.SearchByKeyword(query, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []models.Movie
+	// upsert первой страницы
+	for _, f := range films {
+		m := s.mapFilmToModel(f)
+		_ = s.repo.UpsertMovie(&m)
+		result = append(result, m)
+	}
+
+	// остальные страницы
+	for page := 2; page <= totalPages; page++ {
+		films, _, err := s.client.SearchByKeyword(query, page)
+		if err != nil {
+			continue
+		}
+		for _, f := range films {
+			m := s.mapFilmToModel(f)
+			_ = s.repo.UpsertMovie(&m)
+			result = append(result, m)
+		}
+	}
+	return result, nil
+}
+
+// helper: преобразование из kinopoisk.Film в models.Movie
+func (s *Service) mapFilmToModel(f kinopoisk.Film) models.Movie {
+	yearInt, _ := f.Year.Int64()
+	return models.Movie{
+		ID:          f.KinopoiskID,
+		Title:       f.NameRu,
+		Year:        int(yearInt),
+		Description: f.Description,
+		PosterURL:   f.PosterURL,
+	}
 }
 
 func (s *Service) GetMovie(id int64) (*models.Movie, error) {
