@@ -85,3 +85,18 @@ func (h *MoviesHandler) ListMovies(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(movies)
 }
+
+// handlers/movies.go (добавить ListPopular)
+func (h *MoviesHandler) ListPopular(w http.ResponseWriter, r *http.Request) {
+	limitStr := r.URL.Query().Get("limit")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 {
+		limit = 10
+	}
+	movies, err := h.svc.ListPopular(limit)
+	if err != nil {
+		http.Error(w, "failed to list popular movies", http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(movies)
+}

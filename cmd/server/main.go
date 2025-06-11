@@ -25,6 +25,7 @@ func main() {
 	svc := service.NewService(repo, kpClient, ytClient, cfg.JWTSecret)
 
 	authH := handlers.NewAuthHandler(svc)
+	userH := handlers.NewUserHandler(svc)
 	moviesH := handlers.NewMoviesHandler(svc)
 	watchH := handlers.NewWatchlistHandler(svc)
 	rateH := handlers.NewRatingsHandler(svc)

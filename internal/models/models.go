@@ -10,12 +10,13 @@ type User struct {
 }
 
 type Movie struct {
-	ID          int64     `db:"movie_id"    json:"movie_id"`
-	Title       string    `db:"title"       json:"title"`
-	Year        int       `db:"year"        json:"year"`
-	PosterURL   string    `db:"poster_url"  json:"poster_url"`
-	Description string    `db:"description" json:"description"`
-	LastSync    time.Time `db:"last_sync"   json:"last_sync"`
+	ID              int64     `db:"movie_id"    json:"movie_id"`
+	Title           string    `db:"title"       json:"title"`
+	Year            int       `db:"year"        json:"year"`
+	PosterURL       string    `db:"poster_url"  json:"poster_url"`
+	Description     string    `db:"description" json:"description"`
+	RatingKinopoisk float64   `db:"rating_kinopoisk" json:"ratingKinopoisk"`
+	LastSync        time.Time `db:"last_sync"   json:"last_sync"`
 }
 
 type WatchlistItem struct {
