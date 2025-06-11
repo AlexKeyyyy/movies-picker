@@ -53,6 +53,36 @@ func (s *Service) Login(email, password string) (string, error) {
 	return token.SignedString([]byte(s.jwtSecret))
 }
 
+// GetProfile возвращает профиль текущего пользователя
+func (s *Service) GetProfile(userID int64) (*models.User, error) {
+	return s.repo.GetUserByID(userID)
+}
+
+// UpdateProfile обновляет профиль пользователя (email и/или пароль)
+func (s *Service) UpdateProfile(userID int64, newEmail, newPassword string) (*models.User, error) {
+	user, err := s.repo.GetUserByID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if newEmail != "" && newEmail != user.Email {
+		user.Email = newEmail
+	}
+
+	if newPassword != "" {
+		hashed, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, err
+		}
+		user.PasswordHash = string(hashed)
+	}
+
+	if err := s.repo.UpdateUser(user); err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
 // --- Movies ---
 func (s *Service) SearchMovies(query string) ([]models.Movie, error) {
 	// 1) Сначала пытаемся найти в БД
@@ -101,6 +131,26 @@ func (s *Service) mapFilmToModel(f kinopoisk.Film) models.Movie {
 
 func (s *Service) GetMovie(id int64) (*models.Movie, error) {
 	return s.repo.GetMovieByID(id)
+}
+
+// ListMovies отдаёт фильмы по страницам
+func (s *Service) ListMovies(page, size int) ([]models.Movie, error) {
+	if page < 1 {
+		page = 1
+	}
+	if size < 1 || size > 100 {
+		size = 20
+	}
+	offset := (page - 1) * size
+	return s.repo.ListMovies(offset, size)
+}
+
+// ListPopular возвращает топ-N популярных фильмов
+func (s *Service) ListPopular(limit int) ([]models.Movie, error) {
+	if limit < 1 {
+		limit = 10
+	}
+	return s.repo.ListPopularMovies(limit)
 }
 
 // --- Reviews ---
@@ -154,4 +204,9 @@ func (s *Service) UpsertRating(item *models.RatingItem) error {
 
 func (s *Service) GetRatings(userID int64) ([]models.RatingItem, error) {
 	return s.repo.GetRatings(userID)
+}
+
+// DeleteRating удаляет оценку
+func (s *Service) DeleteRating(userID, movieID int64) error {
+	return s.repo.DeleteRating(userID, movieID)
 }

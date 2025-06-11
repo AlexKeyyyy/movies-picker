@@ -63,3 +63,40 @@ func (h *MoviesHandler) GetMovieReviews(w http.ResponseWriter, r *http.Request) 
 	}
 	json.NewEncoder(w).Encode(reviews)
 }
+
+// GET /movies
+func (h *MoviesHandler) ListMovies(w http.ResponseWriter, r *http.Request) {
+	// читаем page и size
+	q := r.URL.Query()
+	page, err := strconv.Atoi(q.Get("page"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+	size, err := strconv.Atoi(q.Get("size"))
+	if err != nil || size < 1 {
+		size = 20
+	}
+
+	movies, err := h.svc.ListMovies(page, size)
+	if err != nil {
+		http.Error(w, "failed to list movies", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(movies)
+}
+
+// handlers/movies.go (добавить ListPopular)
+func (h *MoviesHandler) ListPopular(w http.ResponseWriter, r *http.Request) {
+	limitStr := r.URL.Query().Get("limit")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 {
+		limit = 10
+	}
+	movies, err := h.svc.ListPopular(limit)
+	if err != nil {
+		http.Error(w, "failed to list popular movies", http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(movies)
+}

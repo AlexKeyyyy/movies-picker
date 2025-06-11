@@ -25,26 +25,39 @@ func main() {
 	svc := service.NewService(repo, kpClient, ytClient, cfg.JWTSecret)
 
 	authH := handlers.NewAuthHandler(svc)
+	userH := handlers.NewUserHandler(svc)
 	moviesH := handlers.NewMoviesHandler(svc)
 	watchH := handlers.NewWatchlistHandler(svc)
 	rateH := handlers.NewRatingsHandler(svc)
 
 	r := chi.NewRouter()
-	// public
+	// --- Public endpoints ---
 	r.Post("/auth/register", authH.Register)
 	r.Post("/auth/login", authH.Login)
-	r.Get("/movies/search", moviesH.SearchMovies)
-	r.Get("/movies/{id}", moviesH.GetMovie)
-	r.Get("/movies/{id}/reviews", moviesH.GetMovieReviews)
 
-	// protected
+	r.Get("/movies", moviesH.ListMovies)                   // список фильмов с пагинацией
+	r.Get("/movies/search", moviesH.SearchMovies)          // поиск
+	r.Get("/movies/{id}", moviesH.GetMovie)                // детали
+	r.Get("/movies/{id}/reviews", moviesH.GetMovieReviews) // обзоры
+	r.Get("/movies/popular", moviesH.ListPopular)          // топ-N популярных
+
+	// --- Protected endpoints (JWT required) ---
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.JWT(cfg.JWTSecret))
+
+		// профиль
+		r.Get("/users/me", userH.GetProfile)
+		r.Patch("/users/me", userH.UpdateProfile)
+
+		// «Смотреть позже»
 		r.Get("/users/{userID}/watchlist", watchH.GetWatchlist)
 		r.Post("/users/{userID}/watchlist", watchH.AddToWatchlist)
 		r.Delete("/users/{userID}/watchlist/{movieID}", watchH.RemoveFromWatchlist)
+
+		// рейтинги
 		r.Get("/users/{userID}/ratings", rateH.GetRatings)
 		r.Post("/users/{userID}/ratings", rateH.AddOrUpdateRating)
+		r.Delete("/users/{userID}/ratings/{movieID}", rateH.DeleteRating)
 	})
 
 	log.Printf("Server running on :%s", cfg.Port)

@@ -51,21 +51,17 @@ func main() {
 
 func upsertFilms(repo *repository.Repo, films []kinopoisk.Film) {
 	for _, f := range films {
-		yearInt, err := strconv.Atoi(f.Year.String())
-		if err != nil {
-			yearInt = 0
-		}
+		yearInt, _ := strconv.Atoi(f.Year.String())
 		movie := &models.Movie{
-			ID:          f.KinopoiskID,
-			Title:       f.NameRu,
-			Year:        yearInt,
-			Description: f.Description,
-			PosterURL:   f.PosterURL,
+			ID:              f.KinopoiskID,
+			Title:           f.NameRu,
+			Year:            yearInt,
+			Description:     f.Description,
+			PosterURL:       f.PosterURL,
+			RatingKinopoisk: f.RatingKinopoisk, // <— новое поле
 		}
 		if err := repo.UpsertMovie(movie); err != nil {
 			log.Printf("upsert failed %d: %v", movie.ID, err)
-		} else {
-			log.Printf("upserted: %s (%d)", movie.Title, movie.Year)
 		}
 	}
 }
