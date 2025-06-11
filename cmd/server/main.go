@@ -33,6 +33,7 @@ func main() {
 	// public
 	r.Post("/auth/register", authH.Register)
 	r.Post("/auth/login", authH.Login)
+	r.Get("/movies", moviesH.ListMovies)
 	r.Get("/movies/search", moviesH.SearchMovies)
 	r.Get("/movies/{id}", moviesH.GetMovie)
 	r.Get("/movies/{id}/reviews", moviesH.GetMovieReviews)

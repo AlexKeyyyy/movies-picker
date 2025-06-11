@@ -56,6 +56,21 @@ func (r *Repo) SearchMovies(query string) ([]models.Movie, error) {
 	return movies, err
 }
 
+// ListMovies возвращает список фильмов с пагинацией
+func (r *Repo) ListMovies(offset, limit int) ([]models.Movie, error) {
+	var movies []models.Movie
+	// выбираем только поля нужные для списка
+	query := `
+      SELECT movie_id, title, year, poster_url
+      FROM movies
+      ORDER BY title
+      LIMIT $1 OFFSET $2`
+	if err := r.db.Select(&movies, query, limit, offset); err != nil {
+		return nil, err
+	}
+	return movies, nil
+}
+
 // --- Watchlist ---
 func (r *Repo) AddToWatchlist(item *models.WatchlistItem) error {
 	_, err := r.db.Exec(`

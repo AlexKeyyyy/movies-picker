@@ -63,3 +63,25 @@ func (h *MoviesHandler) GetMovieReviews(w http.ResponseWriter, r *http.Request) 
 	}
 	json.NewEncoder(w).Encode(reviews)
 }
+
+// GET /movies
+func (h *MoviesHandler) ListMovies(w http.ResponseWriter, r *http.Request) {
+	// читаем page и size
+	q := r.URL.Query()
+	page, err := strconv.Atoi(q.Get("page"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+	size, err := strconv.Atoi(q.Get("size"))
+	if err != nil || size < 1 {
+		size = 20
+	}
+
+	movies, err := h.svc.ListMovies(page, size)
+	if err != nil {
+		http.Error(w, "failed to list movies", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(movies)
+}

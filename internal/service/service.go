@@ -103,6 +103,18 @@ func (s *Service) GetMovie(id int64) (*models.Movie, error) {
 	return s.repo.GetMovieByID(id)
 }
 
+// ListMovies отдаёт фильмы по страницам
+func (s *Service) ListMovies(page, size int) ([]models.Movie, error) {
+	if page < 1 {
+		page = 1
+	}
+	if size < 1 || size > 100 {
+		size = 20
+	}
+	offset := (page - 1) * size
+	return s.repo.ListMovies(offset, size)
+}
+
 // --- Reviews ---
 
 // GetMovieReviews возвращает список обзоров для фильма по его ID
