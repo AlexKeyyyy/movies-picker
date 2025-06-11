@@ -59,15 +59,24 @@ func (s *Service) GetProfile(userID int64) (*models.User, error) {
 }
 
 // UpdateProfile обновляет профиль пользователя (email и/или пароль)
-func (s *Service) UpdateProfile(userID int64, email, passwordHash string) (*models.User, error) {
+func (s *Service) UpdateProfile(userID int64, newEmail, newPassword string) (*models.User, error) {
 	user, err := s.repo.GetUserByID(userID)
 	if err != nil {
 		return nil, err
 	}
-	user.Email = email
-	if passwordHash != "" {
-		user.PasswordHash = passwordHash
+
+	if newEmail != "" && newEmail != user.Email {
+		user.Email = newEmail
 	}
+
+	if newPassword != "" {
+		hashed, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, err
+		}
+		user.PasswordHash = string(hashed)
+	}
+
 	if err := s.repo.UpdateUser(user); err != nil {
 		return nil, err
 	}

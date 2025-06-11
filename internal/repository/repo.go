@@ -42,10 +42,11 @@ func (r *Repo) GetUserByID(userID int64) (*models.User, error) {
 }
 
 // UpdateUser обновляет email и/или пароль пользователя
+// UpdateUser обновляет email и/или пароль пользователя
 func (r *Repo) UpdateUser(user *models.User) error {
-	_, err := r.db.NamedExec(
-		`UPDATE users SET email = :email, password_hash = :password_hash WHERE user_id = :user_id`,
-		user,
+	_, err := r.db.Exec(
+		"UPDATE users SET email = $1, password_hash = $2 WHERE user_id = $3",
+		user.Email, user.PasswordHash, user.ID,
 	)
 	return err
 }
