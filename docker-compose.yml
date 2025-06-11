@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:13
+    restart: always
+    environment:
+      POSTGRES_DB: moviedb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: alexkoba
+    volumes:
+     - db_data:/var/lib/postgresql/data
+     - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: on-failure
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${PORT}:${PORT}"
+    command: ["/app/server"]
+
+volumes:
+  db_data:
