@@ -1,0 +1,24 @@
+# docs/components/schemas/Rating.yaml
+type: object
+description: Оценка пользователя для фильма
+properties:
+  user_id:
+    type: integer
+    description: Идентификатор пользователя
+  movie_id:
+    type: integer
+    description: Идентификатор фильма
+  rating:
+    type: integer
+    minimum: 1
+    maximum: 10
+    description: Оценка от 1 до 10
+  rated_at:
+    type: string
+    format: date-time
+    description: Время выставления оценки
+required:
+  - user_id
+  - movie_id
+  - rating
+  - rated_at

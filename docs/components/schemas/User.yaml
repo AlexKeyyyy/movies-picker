@@ -1,0 +1,13 @@
+# docs/components/schemas/User.yaml
+type: object
+properties:
+  user_id:
+    type: integer
+    description: Уникальный идентификатор пользователя
+  email:
+    type: string
+    format: email
+    description: Электронная почта пользователя
+required:
+  - user_id
+  - email

@@ -1,0 +1,9 @@
+# docs/components/schemas/AuthResponse.yaml
+type: object
+description: Ответ после успешного входа
+properties:
+  token:
+    type: string
+    description: JWT для доступа к защищённым эндпоинтам
+required:
+  - token
