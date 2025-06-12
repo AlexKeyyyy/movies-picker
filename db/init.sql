@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS movies (
   year        INT,
   poster_url  TEXT,
   description TEXT,
+  rating_kinopoisk NUMERIC(3,1),
   last_sync   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
