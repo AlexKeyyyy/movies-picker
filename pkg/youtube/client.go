@@ -43,6 +43,7 @@ type searchResponse struct {
 // ReviewResult представляет один обзор из YouTube
 type ReviewResult struct {
 	VideoID      string `json:"video_id"`
+	VideoURL     string `json:"video_url"` // ссылка на видео
 	Title        string `json:"title"`
 	ChannelTitle string `json:"channel_title"`
 	ThumbnailURL string `json:"thumbnail_url"`
@@ -63,14 +64,9 @@ func (c *Client) SearchReviews(keyword string, maxResultsPerPage int) ([]ReviewR
 		if pageToken != "" {
 			params.Set("pageToken", pageToken)
 		}
-		// Дополнительные параметры можно добавить: regionCode, relevanceLanguage и т.д.
 
 		u := fmt.Sprintf("%s/search?%s&key=%s", c.baseURL, params.Encode(), c.apiKey)
-		req, err := http.NewRequest("GET", u, nil)
-		if err != nil {
-			return nil, err
-		}
-		resp, err := c.httpClient.Do(req)
+		resp, err := c.httpClient.Get(u)
 		if err != nil {
 			return nil, err
 		}
@@ -86,8 +82,10 @@ func (c *Client) SearchReviews(keyword string, maxResultsPerPage int) ([]ReviewR
 		}
 
 		for _, item := range sr.Items {
+			vid := item.ID.VideoID
 			result = append(result, ReviewResult{
-				VideoID:      item.ID.VideoID,
+				VideoID:      vid,
+				VideoURL:     fmt.Sprintf("https://www.youtube.com/watch?v=%s", vid),
 				Title:        item.Snippet.Title,
 				ChannelTitle: item.Snippet.ChannelTitle,
 				ThumbnailURL: item.Snippet.Thumbnails.High.URL,
@@ -95,7 +93,7 @@ func (c *Client) SearchReviews(keyword string, maxResultsPerPage int) ([]ReviewR
 		}
 
 		count += len(sr.Items)
-		// Если нет следующей страницы или достигнут лимит (максимум 50*10 по API), заканчиваем
+		// остановимся, если страниц больше нет или набрали слишком много
 		if sr.NextPageToken == "" || count >= maxResultsPerPage*5 {
 			break
 		}

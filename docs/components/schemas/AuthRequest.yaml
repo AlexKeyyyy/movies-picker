@@ -1,0 +1,15 @@
+# docs/components/schemas/AuthRequest.yaml
+type: object
+description: Запрос авторизации или регистрации
+required:
+  - email
+  - password
+properties:
+  email:
+    type: string
+    format: email
+    description: Электронная почта пользователя
+  password:
+    type: string
+    format: password
+    description: Пароль пользователя

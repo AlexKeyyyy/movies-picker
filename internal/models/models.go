@@ -36,6 +36,7 @@ type RatingItem struct {
 
 type ReviewItem struct {
 	VideoID      string `json:"video_id"`
+	VideoURL     string `json:"video_url"`
 	Title        string `json:"title"`
 	ChannelTitle string `json:"channel_title"`
 	ThumbnailURL string `json:"thumbnail_url"`

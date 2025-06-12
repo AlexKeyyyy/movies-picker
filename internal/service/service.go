@@ -171,6 +171,7 @@ func (s *Service) GetMovieReviews(id int64) ([]models.ReviewItem, error) {
 	for _, r := range reviews {
 		out = append(out, models.ReviewItem{
 			VideoID:      r.VideoID,
+			VideoURL:     r.VideoURL,
 			Title:        r.Title,
 			ChannelTitle: r.ChannelTitle,
 			ThumbnailURL: r.ThumbnailURL,

@@ -1,0 +1,24 @@
+# docs/components/schemas/Movie.yaml
+type: object
+description: Описание фильма
+properties:
+  movie_id:
+    type: integer
+    description: Внутренний идентификатор фильма
+  title:
+    type: string
+    description: Название фильма
+  year:
+    type: integer
+    description: Год выхода
+  poster_url:
+    type: string
+    format: uri
+    description: Ссылка на постер
+  description:
+    type: string
+    description: Краткое описание сюжета
+required:
+  - movie_id
+  - title
+  - year

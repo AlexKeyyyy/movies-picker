@@ -1,0 +1,18 @@
+# docs/components/schemas/WatchlistItem.yaml
+type: object
+description: Запись о фильме в списке "Смотреть позже"
+properties:
+  user_id:
+    type: integer
+    description: Идентификатор пользователя
+  movie_id:
+    type: integer
+    description: Идентификатор фильма
+  added_at:
+    type: string
+    format: date-time
+    description: Время добавления в список
+required:
+  - user_id
+  - movie_id
+  - added_at

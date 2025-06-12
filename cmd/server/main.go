@@ -4,6 +4,8 @@ import (
 	"log"
 	"net/http"
 
+	httpSwagger "github.com/swaggo/http-swagger"
+
 	"github.com/AlexKeyyyy/movies-picker/config"
 	"github.com/AlexKeyyyy/movies-picker/internal/handlers"
 	"github.com/AlexKeyyyy/movies-picker/internal/middleware"
@@ -60,6 +62,17 @@ func main() {
 		r.Delete("/users/{userID}/ratings/{movieID}", rateH.DeleteRating)
 	})
 
+	// --- OpenAPI спецификация ---
+	fsSpec := http.StripPrefix("/docs/spec/", http.FileServer(http.Dir("./docs")))
+	r.Handle("/docs/spec/*", fsSpec)
+
+	// Swagger UI (httpSwagger само развернёт UI и подтянет openapi.yml по URL)
+	r.Get("/docs/*", httpSwagger.Handler(
+		// указываем абсолютный URL до вашей спецификации
+		httpSwagger.URL("http://localhost:"+cfg.Port+"/docs/spec/openapi.yml"),
+	))
+
 	log.Printf("Server running on :%s", cfg.Port)
 	log.Fatal(http.ListenAndServe(":"+cfg.Port, r))
+
 }
