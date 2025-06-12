@@ -1,0 +1,306 @@
+openapi: 3.0.3
+info:
+  title: Movie Picker API
+  version: 1.0.0
+  description: |
+    **Movie Picker** — сервис поиска, рекомендаций и отслеживания фильмов  
+    • Поиск по названию/ключевым словам (Kinopoisk API)  
+    • Детали фильма (год, описание, постер)  
+    • Личный список "Смотреть позже"  
+    • Собственные рейтинги (1–10)  
+    • Ссылки на видео-обзоры (YouTube Data API)
+servers:
+  - url: http://localhost:{port}
+    description: Локальный сервер
+    variables:
+      port:
+        default: 8080
+        description: Порт, выставляемый в `PORT` из .env
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    User:
+      type: object
+      properties:
+        user_id:
+          type: integer
+        email:
+          type: string
+    AuthRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+    Movie:
+      type: object
+      properties:
+        movie_id:
+          type: integer
+        title:
+          type: string
+        year:
+          type: integer
+        poster_url:
+          type: string
+        description:
+          type: string
+    WatchlistItem:
+      type: object
+      properties:
+        user_id:
+          type: integer
+        movie_id:
+          type: integer
+        added_at:
+          type: string
+          format: date-time
+    Rating:
+      type: object
+      properties:
+        user_id:
+          type: integer
+        movie_id:
+          type: integer
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 10
+        rated_at:
+          type: string
+          format: date-time
+paths:
+  /auth/register:
+    post:
+      summary: Зарегистрировать нового пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthRequest"
+      responses:
+        "201":
+          description: Пользователь создан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+  /auth/login:
+    post:
+      summary: Войти и получить JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthRequest"
+      responses:
+        "200":
+          description: Токен авторизации
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+  /movies:
+    get:
+      summary: Поиск фильмов
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Строка для поиска (титул, ключевые слова)
+        - in: query
+          name: year
+          schema:
+            type: integer
+          description: Фильтр по году
+      responses:
+        "200":
+          description: Список фильмов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Movie"
+  /movies/{movie_id}:
+    get:
+      summary: Подробности фильма
+      parameters:
+        - in: path
+          name: movie_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Данные фильма
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Movie"
+        "404":
+          description: Не найдено
+  /movies/{movie_id}/reviews:
+    get:
+      summary: YouTube-обзоры по фильму
+      parameters:
+        - in: path
+          name: movie_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Ссылки на видео-обзоры
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /users/{user_id}/watchlist:
+    get:
+      security:
+        - bearerAuth: []
+      summary: Получить список "Смотреть позже"
+      parameters:
+        - in: path
+          name: user_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Список фильмов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas<Movie>"
+    post:
+      security:
+        - bearerAuth: []
+      summary: Добавить фильм в "Смотреть позже"
+      parameters:
+        - in: path
+          name: user_id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                movie_id:
+                  type: integer
+      responses:
+        "201":
+          description: Добавлено
+  /users/{user_id}/watchlist/{movie_id}:
+    delete:
+      security:
+        - bearerAuth: []
+      summary: Удалить из "Смотреть позже"
+      parameters:
+        - in: path
+          name: user_id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: movie_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Успешно удалено
+  /users/{user_id}/ratings:
+    get:
+      security:
+        - bearerAuth: []
+      summary: Получить все свои рейтинги
+      parameters:
+        - in: path
+          name: user_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Список рейтингов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas<Rating>"
+    post:
+      security:
+        - bearerAuth: []
+      summary: Поставить рейтинг фильму
+      parameters:
+        - in: path
+          name: user_id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas<Rating>"
+      responses:
+        "201":
+          description: Рейтинг сохранён
+  /users/{user_id}/ratings/{movie_id}:
+    put:
+      security:
+        - bearerAuth: []
+      summary: Обновить рейтинг
+      parameters:
+        - in: path
+          name: user_id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: movie_id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 10
+      responses:
+        "200":
+          description: Рейтинг обновлён
+security:
+  - bearerAuth: []
