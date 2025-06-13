@@ -109,3 +109,35 @@ CREATE TABLE ratings (
 ```
 
 ---
+
+## Сборка
+
+На Windows:
+
+1. Создать .env файл, например:
+   PORT=8080
+   DB_URL=postgres://postgres:alexkoba@postgres:5432/moviedb?sslmode=disable
+   JWT_SECRET=hello
+   KINOPOISK_API_KEY=bda3897d-a997-48e4-97a8-0d0bd514e7b3
+   YOUTUBE_API_KEY=AIzaSyBGnHMN-tDg43gjwwpXcWj1fsjXTH28oQw
+
+2. Запустить ./run.ps1
+
+На Linux:
+
+1. Аналогично
+2. Запустить ./run.sh
+
+## Запуск локально
+
+1. Создать .env файл, например:
+   PORT=8080
+   DB_URL=postgres://postgres:alexkoba@localhost:5432/moviedb?sslmode=disable
+   JWT_SECRET=hello
+   KINOPOISK_API_KEY=bda3897d-a997-48e4-97a8-0d0bd514e7b3
+   YOUTUBE_API_KEY=AIzaSyBGnHMN-tDg43gjwwpXcWj1fsjXTH28oQw
+
+2. go run cmd/server/main.go
+
+Спецификация Swagger находится по адресу, например:
+localhost:PORT/docs

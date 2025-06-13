@@ -18,7 +18,14 @@ properties:
   description:
     type: string
     description: Краткое описание сюжета
+  ratingKinopoisk:
+    type: number
+    format: float
+    description: Рейтинг фильма на Кинопоиске
 required:
   - movie_id
   - title
   - year
+  - poster_url
+  - description
+  - ratingKinopoisk
