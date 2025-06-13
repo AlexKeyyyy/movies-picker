@@ -1,9 +1,16 @@
-# docs/components/schemas/AuthResponse.yaml
 type: object
 description: Ответ после успешного входа
 properties:
-  token:
+  access_token:
     type: string
     description: JWT для доступа к защищённым эндпоинтам
+  expires_in:
+    type: integer
+    description: Срок действия токена (в секундах)
+  token_type:
+    type: string
+    description: Тип токена (обычно «Bearer»)
 required:
-  - token
+  - access_token
+  - expires_in
+  - token_type

@@ -89,7 +89,7 @@ func (r *Repo) ListMovies(offset, limit int) ([]models.Movie, error) {
 	var movies []models.Movie
 	// выбираем только поля нужные для списка
 	query := `
-      SELECT movie_id, title, year, poster_url
+      SELECT movie_id, title, year, poster_url, description, rating_kinopoisk
       FROM movies
       ORDER BY title
       LIMIT $1 OFFSET $2`

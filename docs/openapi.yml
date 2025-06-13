@@ -64,22 +64,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
+              examples:
+                success:
+                  summary: Успешный ответ
+                  value:
+                    access_token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    expires_in: 3600
+                    token_type: Bearer
 
   /movies:
     get:
       tags: [Movies]
-      summary: Списком или поиск по параметрам
+      summary: Получение фильмов с пагинацией
       parameters:
         - in: query
-          name: q
-          schema:
-            type: string
-          description: Строка для поиска (титул, ключевые слова)
-        - in: query
-          name: year
+          name: page
           schema:
             type: integer
-          description: Фильтр по году
+            minimum: 1
+            default: 1
+          description: Номер страницы (начиная с 1)
+        - in: query
+          name: size
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Количество элементов на странице
       responses:
         "200":
           description: Список фильмов
@@ -89,11 +101,27 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Movie"
+              examples:
+                sample:
+                  summary: Пример ответа
+                  value:
+                    - movie_id: 1
+                      title: "The Shawshank Redemption"
+                      year: 1994
+                      poster_url: "https://example.com/posters/shawshank.jpg"
+                      description: "Two imprisoned men bond over a number of years..."
+                      ratingKinopoisk: 9.3
+                    - movie_id: 2
+                      title: "The Godfather"
+                      year: 1972
+                      poster_url: "https://example.com/posters/godfather.jpg"
+                      description: "The aging patriarch of an organized crime dynasty..."
+                      ratingKinopoisk: 9.2
 
   /movies/search:
     get:
       tags: [Movies]
-      summary: То же, что `/movies` с query-параметром q
+      summary: Поиск фильмов по имени
       parameters:
         - in: query
           name: q
@@ -117,7 +145,7 @@ paths:
       summary: Топ-N популярных фильмов
       parameters:
         - in: query
-          name: n
+          name: limit
           schema:
             type: integer
             default: 10
@@ -170,7 +198,7 @@ paths:
               schema:
                 type: array
                 items:
-                  type: string
+                  $ref: "#/components/schemas/YouTubeReviewItem"
 
   /users/me:
     get:
@@ -195,7 +223,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/User"
+              $ref: "#/components/schemas/AuthRequest"
       responses:
         "200":
           description: Обновлённый профиль
@@ -249,6 +277,15 @@ paths:
       responses:
         "201":
           description: Добавлено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  movie_id:
+                    type: integer
+                  user_id:
+                    type: integer
 
   /users/{user_id}/watchlist/{movie_id}:
     delete:
@@ -308,10 +345,25 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Rating"
+              type: object
+              required: [movie_id, rating]
+              properties:
+                movie_id:
+                  type: integer
+                rating:
+                  type: integer
       responses:
         "201":
           description: Рейтинг сохранён
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  movie_id:
+                    type: integer
+                  rating:
+                    type: integer
 
   /users/{user_id}/ratings/{movie_id}:
     delete:
@@ -350,7 +402,12 @@ components:
         email:
           type: string
           format: email
-      required: [user_id, email]
+        PasswordHash:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      required: [user_id, email, created_at]
 
     AuthRequest:
       type: object
@@ -364,44 +421,64 @@ components:
 
     AuthResponse:
       type: object
+      description: Ответ после успешного входа
       properties:
-        token:
+        access_token:
           type: string
-      required: [token]
+          description: JWT для доступа к защищённым эндпоинтам
+        expires_in:
+          type: integer
+          description: Срок действия токена (в секундах)
+        token_type:
+          type: string
+          description: Тип токена (обычно «Bearer»)
+      required: [access_token, expires_in, token_type]
 
     Movie:
       type: object
       properties:
         movie_id:
           type: integer
+          description: Внутренний идентификатор фильма
         title:
           type: string
+          description: Название фильма
         year:
           type: integer
+          description: Год выхода
         poster_url:
           type: string
           format: uri
+          description: Ссылка на постер
         description:
           type: string
-      required: [movie_id, title, year]
+          description: Краткое описание сюжета
+        ratingKinopoisk:
+          type: number
+          format: float
+          description: Рейтинг фильма на Кинопоиске
+      required:
+        [movie_id, title, year, poster_url, description, ratingKinopoisk]
 
     WatchlistItem:
       type: object
       properties:
-        user_id:
-          type: integer
         movie_id:
           type: integer
         added_at:
           type: string
           format: date-time
-      required: [user_id, movie_id, added_at]
+        title:
+          type: string
+          description: Название фильма
+        poster_url:
+          type: string
+          format: uri
+          description: Ссылка на постер
 
     Rating:
       type: object
       properties:
-        user_id:
-          type: integer
         movie_id:
           type: integer
         rating:
@@ -411,7 +488,27 @@ components:
         rated_at:
           type: string
           format: date-time
-      required: [user_id, movie_id, rating, rated_at]
+      required: [movie_id, rating, rated_at]
+
+    YouTubeReviewItem:
+      type: object
+      properties:
+        video_id:
+          type: string
+        video_url:
+          type: string
+          format: uri
+          description: Ссылка на обзоры
+        title:
+          type: string
+          description: Название видео
+        channel_title:
+          type: string
+          description: Название канала
+        thumbnail_url:
+          type: string
+          format: uri
+          description: Ссылка на обложку видео
 
 security:
   - bearerAuth: []
