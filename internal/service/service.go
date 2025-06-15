@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"log"
 
 	"github.com/AlexKeyyyy/movies-picker/internal/models"
 	"github.com/AlexKeyyyy/movies-picker/internal/repository"
@@ -159,13 +160,16 @@ func (s *Service) ListPopular(limit int) ([]models.Movie, error) {
 func (s *Service) GetMovieReviews(id int64) ([]models.ReviewItem, error) {
 	m, err := s.repo.GetMovieByID(id)
 	if err != nil {
+		log.Printf("GetMovieByID failed for id %d: %v", id, err)
 		return nil, fmt.Errorf("movie not found: %w", err)
 	}
-
+	
 	reviews, err := s.ytClient.SearchReviews(m.Title, 10)
 	if err != nil {
+		log.Printf("YouTube search failed for movie title '%s': %v", m.Title, err)
 		return nil, fmt.Errorf("youtube search failed: %w", err)
 	}
+	
 
 	var out []models.ReviewItem
 	for _, r := range reviews {

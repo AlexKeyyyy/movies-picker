@@ -14,6 +14,7 @@ import (
 	"github.com/AlexKeyyyy/movies-picker/pkg/kinopoisk"
 	"github.com/AlexKeyyyy/movies-picker/pkg/youtube"
 	"github.com/go-chi/chi/v5"
+    "github.com/go-chi/cors"
 )
 
 func main() {
@@ -33,6 +34,15 @@ func main() {
 	rateH := handlers.NewRatingsHandler(svc)
 
 	r := chi.NewRouter()
+
+	r.Use(cors.Handler(cors.Options{
+        AllowedOrigins:   []string{"http://localhost:5173"},
+        AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+        AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+        AllowCredentials: true,
+        MaxAge:           300,
+    }))
+
 	// --- Public endpoints ---
 	r.Post("/auth/register", authH.Register)
 	r.Post("/auth/login", authH.Login)
