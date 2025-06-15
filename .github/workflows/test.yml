@@ -1,4 +1,4 @@
-name: CI: Unit & Integration Tests
+name: "CI: Unit & Integration Tests"
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   unit-tests:
-    name: 🧪 Unit Tests
+    name: "🧪 Unit Tests"
     runs-on: ubuntu-latest
 
     steps:
@@ -26,46 +26,48 @@ jobs:
         run: go test ./internal/... ./pkg/... -v -cover
 
   integration-tests:
-    name: 🔗 Integration Tests
+    name: "🔗 Integration Tests"
     needs: unit-tests
     runs-on: ubuntu-latest
 
-    # Используем Docker‑Compose для поднятия БД и API
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_DB: moviedb
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: alexkoba
+        options: >-
+          --health-cmd pg_isready -U postgres
+          --health-interval 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+
       - name: Create .env for Docker
         run: |
-          echo "PORT=8080"                        >> .env
-          echo "DB_URL=postgres://postgres:alexkoba@db:5432/moviedb?sslmode=disable" >> .env
+          echo "PORT=8080"                        > .env
+          echo "DB_URL=postgres://postgres:alexkoba@postgres:5432/moviedb?sslmode=disable" >> .env
           echo "JWT_SECRET=${{ secrets.JWT_SECRET }}"  >> .env
           echo "KINOPOISK_API_KEY=${{ secrets.KINOPOISK_API_KEY }}" >> .env
           echo "YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}" >> .env
 
-
-      - name: Set up Docker Compose
-        run: |
-          # (если нужно) docker-compose version
-          docker compose version
-
-      - name: Start services (Postgres + API)
-        env:
-          PORT: 8080
+      - name: Build and start API
         run: |
           docker-compose down -v
+          docker-compose build api builder
           docker-compose up -d postgres api
 
-      - name: Wait for Postgres
+      - name: Wait for API healthy
         run: |
-          until docker exec $(docker-compose ps -q postgres) pg_isready -U postgres; do
-            echo "Waiting for Postgres..."
-            sleep 2
-          done
-
-      - name: Wait for API healthcheck
-        run: |
-          echo "Waiting for API to import movies and become healthy..."
-          # Ждём, пока API healthcheck не скажет OK
           until curl -f http://localhost:8080/movies?page=1&size=1; do
             echo "Waiting for API..."
             sleep 2
@@ -73,7 +75,6 @@ jobs:
 
       - name: Run integration tests
         env:
-          API_URL: http://api:8080
+          API_URL: http://localhost:8080
         run: |
-          # Прогоним интеграционные тесты в контейнере builder
           docker-compose run --rm builder
