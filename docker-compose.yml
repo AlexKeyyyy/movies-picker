@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   postgres:
     image: postgres:13
@@ -7,15 +9,14 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: alexkoba
     volumes:
-     - db_data:/var/lib/postgresql/data
-     - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - db_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 5s
       retries: 5
 
   api:
-    image: movies-picker_api
     build:
       context: .
       dockerfile: Dockerfile
@@ -23,31 +24,30 @@ services:
     env_file:
       - .env
     environment:
-      - DB_HOST=postgres     # имя сервиса БД из этого compose
-      - DB_USER=postgres     # пользователь Postgres
+      - DB_HOST=postgres
+      - DB_USER=postgres
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:${PORT}/movies?page=1&size=1 | grep movie_id"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
     ports:
       - "${PORT}:${PORT}"
     entrypoint:
-      - /bin/sh
+      - sh
       - -c
       - |
-        # Ждём запуска Postgres-сервиса по его DNS-имени внутри сети
         until pg_isready -h postgres -U postgres; do
-          echo "Waiting Postgres..."
+          echo "Waiting Postgres…"
           sleep 2
         done
-
-        echo "Postgres is ready, importing movies…"
+        echo "Importing movies…"
         /app/import_all_movies
-
         echo "Starting API…"
         exec /app/server
-
-
-
 
   builder:
     build:
@@ -55,14 +55,30 @@ services:
       dockerfile: Dockerfile
       target: builder
     working_dir: /app
-    volumes:
-      - .:/app
     env_file:
       - .env
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=postgres
+      - PORT=${PORT}
+      - API_URL=http://api:8080
     depends_on:
-      - postgres
-    # просто держим контейнер живым
-    command: ["sleep", "infinity"]
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    entrypoint:
+      - sh
+      - -c
+      - |
+        echo "=== Running unit tests ==="
+        go test ./internal/... ./pkg/... -v -cover
+
+        echo "=== Running integration tests ==="
+        go test ./test/integration/... -v -timeout 2m
+
+        echo "=== Tests passed, sleeping… ==="
+        sleep infinity
 
 volumes:
   db_data:

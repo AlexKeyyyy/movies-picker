@@ -50,6 +50,7 @@ func (h *RatingsHandler) AddOrUpdateRating(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "cannot set rating", http.StatusInternalServerError)
 		return
 	}
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(item)
 }
 
