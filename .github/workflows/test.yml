@@ -58,9 +58,9 @@ jobs:
 
       - name: Build and start API & DB
         run: |
-          docker-compose down -v
-          docker-compose build api builder
-          docker-compose up -d postgres api
+          docker compose down -v
+          docker compose build api builder
+          docker compose up -d postgres api
 
       - name: Wait for Postgres to be ready
         run: |
@@ -79,4 +79,4 @@ jobs:
       - name: Run integration tests
         env:
           API_URL: http://localhost:8080
-        run: docker-compose run --rm builder
+        run: docker compose run --rm builder
