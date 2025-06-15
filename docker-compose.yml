@@ -78,7 +78,7 @@ services:
         go test ./test/integration/... -v -timeout 2m
 
         echo "=== Tests passed, sleeping… ==="
-        sleep infinity
+        exit 0
 
 volumes:
   db_data:
