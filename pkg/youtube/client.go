@@ -94,7 +94,7 @@ func (c *Client) SearchReviews(keyword string, maxResultsPerPage int) ([]ReviewR
 
 		count += len(sr.Items)
 		// остановимся, если страниц больше нет или набрали слишком много
-		if sr.NextPageToken == "" || count >= maxResultsPerPage*5 {
+		if sr.NextPageToken == "" || count >= maxResultsPerPage {
 			break
 		}
 		pageToken = sr.NextPageToken
