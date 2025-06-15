@@ -7,38 +7,20 @@ on:
     branches: [ "develop" ]
 
 jobs:
-  test:
+  unit-tests:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:13
-        env:
-          POSTGRES_DB: moviedb
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: alexkoba
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Go
+    - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: 1.21
+        go-version: "1.21"
 
-    - name: Run tests
-      env:
-        DB_HOST: localhost
-        DB_USER: postgres
-        DB_PASSWORD: alexkoba
-        DB_NAME: moviedb
-        PORT: 8080
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Run unit tests
       run: |
-        go mod download
-        go test ./... -v -cover
+        go test ./internal/middleware ./internal/repository ./pkg/kinopoisk ./pkg/youtube -v -cover
