@@ -81,32 +81,4 @@ jobs:
           API_URL: http://localhost:8080
         run: docker compose run --rm builder
   
-  build-frontend:
-    name: "🌐 Build Frontend"
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./frontend
-  
-    steps:
-      - uses: actions/checkout@v4
-  
-      - name: Setup Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-          cache: yarn
-          cache-dependency-path: frontend/yarn.lock
-  
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-  
-      - name: Build React App
-        run: yarn build
-  
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./frontend/build
 
