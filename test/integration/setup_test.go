@@ -18,10 +18,9 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	// 1) Дадим время Docker Compose запустить postgres и api (с импортом фильмов)
+
 	time.Sleep(8 * time.Second)
 
-	// 2) Определяем baseURL из окружения
 	baseURL = os.Getenv("API_URL")
 	if baseURL == "" {
 		baseURL = "http://localhost:8080"
@@ -59,6 +58,5 @@ func TestMain(m *testing.M) {
 	assert.Equal(nil, http.StatusOK, resp2.StatusCode)
 	token = loginResp.AccessToken
 
-	// 5) Запускаем остальные тесты
 	os.Exit(m.Run())
 }

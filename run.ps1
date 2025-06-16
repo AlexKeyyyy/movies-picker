@@ -1,38 +1,31 @@
-<#
-.SYNOPSIS
-  Полный CI-процесс: поднять БД, собрать образы, прогнать тесты, импортировать фильмы, запустить API.
-.DESCRIPTION
-  Требует Docker Desktop (docker и docker-compose в PATH), PowerShell 7+.
-#>
-
 param(
-    [int]$IntegrationTimeout = 120
+  [int]$IntegrationTimeout = 120
 )
 
-# 1) Остановить и удалить все старые контейнеры + том с данными
-docker-compose down -v
+# 1) Сброс
+docker compose down -v
 
-# 2) Поднять только БД
-docker-compose up -d postgres
+# 2) Поднять только postgres
+docker compose up -d postgres
 
-Write-Host "Waiting for PostgreSQL to be healthy…"
-while (-not (docker-compose exec -T postgres pg_isready -U postgres)) {
-    Start-Sleep -Seconds 2
-}
+Write-Host "Waiting for Postgres to be healthy…"
+# получаем ID контейнера postgres
+$pg = docker compose ps -q postgres
+do {
+  Start-Sleep -Seconds 2
+  $status = docker inspect --format='{{.State.Health.Status}}' $pg
+  Write-Host "Postgres status: $status"
+} while ($status -ne "healthy")
 
 # 3) Собрать образы
-docker-compose build api builder
+docker compose build builder api frontend
 
-# 4) Запуск unit-тестов
-Write-Host "→ Running unit tests…"
-docker-compose run --rm builder pwsh -Command "go test ./... -cover"
+# 4) Запустить тесты
+Write-Host "→ Running all tests…"
+docker compose run --rm builder
 
-# 5) Запуск интеграционных тестов
-Write-Host "→ Running integration tests…"
-docker-compose run --rm builder pwsh -Command "go test ./internal/handlers -timeout ${IntegrationTimeout}s -cover"
+# 5) Запустить API и фронтенд
+Write-Host "→ Starting API and Frontend…"
+docker compose up -d api frontend
 
-# 6) Запустить API (в нём при старте выполнится import_all_movies)
-Write-Host "→ Starting API with import_all_movies…"
-docker-compose up -d api
-
-Write-Host "✅ All done! Service running on port $($env:PORT)"
+Write-Host "✅ Done! API: http://localhost:$($env:PORT); Frontend: http://localhost:3000"

@@ -66,7 +66,6 @@ func (h *MoviesHandler) GetMovieReviews(w http.ResponseWriter, r *http.Request) 
 
 // GET /movies
 func (h *MoviesHandler) ListMovies(w http.ResponseWriter, r *http.Request) {
-	// читаем page и size
 	q := r.URL.Query()
 	page, err := strconv.Atoi(q.Get("page"))
 	if err != nil || page < 1 {

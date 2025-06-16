@@ -42,7 +42,6 @@ func (r *Repo) GetUserByID(userID int64) (*models.User, error) {
 }
 
 // UpdateUser обновляет email и/или пароль пользователя
-// UpdateUser обновляет email и/или пароль пользователя
 func (r *Repo) UpdateUser(user *models.User) error {
 	_, err := r.db.Exec(
 		"UPDATE users SET email = $1, password_hash = $2 WHERE user_id = $3",
@@ -53,7 +52,6 @@ func (r *Repo) UpdateUser(user *models.User) error {
 
 // --- Movie ---
 func (r *Repo) UpsertMovie(m *models.Movie) error {
-	// INSERT … ON CONFLICT (movie_id) DO UPDATE …
 	_, err := r.db.NamedExec(`
       INSERT INTO movies
         (movie_id, title, year, poster_url, description, rating_kinopoisk, last_sync)
@@ -78,7 +76,6 @@ func (r *Repo) GetMovieByID(id int64) (*models.Movie, error) {
 }
 
 func (r *Repo) SearchMovies(query string) ([]models.Movie, error) {
-	// полнотекстовый поиск или ILIKE
 	var movies []models.Movie
 	err := r.db.Select(&movies, "SELECT * FROM movies WHERE title ILIKE $1", "%"+query+"%")
 	return movies, err
@@ -87,7 +84,6 @@ func (r *Repo) SearchMovies(query string) ([]models.Movie, error) {
 // ListMovies возвращает список фильмов с пагинацией
 func (r *Repo) ListMovies(offset, limit int) ([]models.Movie, error) {
 	var movies []models.Movie
-	// выбираем только поля нужные для списка
 	query := `
       SELECT movie_id, title, year, poster_url, description, rating_kinopoisk
       FROM movies

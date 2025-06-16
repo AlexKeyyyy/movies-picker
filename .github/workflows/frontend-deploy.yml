@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # нужно для деплоя в gh-pages
+  contents: write
   pages: write
   id-token: write
 
@@ -16,7 +16,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: frontend  # ВСЕ команды выполняются внутри ./frontend
+        working-directory: frontend
 
     steps:
       - name: Checkout repo

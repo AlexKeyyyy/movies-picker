@@ -43,7 +43,7 @@ type searchResponse struct {
 // ReviewResult представляет один обзор из YouTube
 type ReviewResult struct {
 	VideoID      string `json:"video_id"`
-	VideoURL     string `json:"video_url"` // ссылка на видео
+	VideoURL     string `json:"video_url"`
 	Title        string `json:"title"`
 	ChannelTitle string `json:"channel_title"`
 	ThumbnailURL string `json:"thumbnail_url"`
@@ -93,7 +93,7 @@ func (c *Client) SearchReviews(keyword string, maxResultsPerPage int) ([]ReviewR
 		}
 
 		count += len(sr.Items)
-		// остановимся, если страниц больше нет или набрали слишком много
+
 		if sr.NextPageToken == "" || count >= maxResultsPerPage {
 			break
 		}
