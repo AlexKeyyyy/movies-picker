@@ -1,9 +1,6 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:13
-    restart: always
     environment:
       POSTGRES_DB: moviedb
       POSTGRES_USER: postgres
@@ -14,40 +11,8 @@ services:
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 5s
+      timeout: 3s
       retries: 5
-
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: on-failure
-    env_file:
-      - .env
-    environment:
-      - DB_HOST=postgres
-      - DB_USER=postgres
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:${PORT}/movies?page=1&size=1 | grep movie_id"]
-      interval: 5s
-      timeout: 2s
-      retries: 10
-    ports:
-      - "${PORT}:${PORT}"
-    entrypoint:
-      - sh
-      - -c
-      - |
-        until pg_isready -h postgres -U postgres; do
-          echo "Waiting Postgres…"
-          sleep 2
-        done
-        echo "Importing movies…"
-        /app/import_all_movies
-        echo "Starting API…"
-        exec /app/server
 
   builder:
     build:
@@ -57,28 +22,60 @@ services:
     working_dir: /app
     env_file:
       - .env
-    environment:
-      - DB_HOST=postgres
-      - DB_USER=postgres
-      - PORT=${PORT}
-      - API_URL=http://api:8080
     depends_on:
       postgres:
         condition: service_healthy
-      api:
-        condition: service_started
     entrypoint:
       - sh
       - -c
       - |
-        echo "=== Running unit tests ==="
-        go test ./internal/... ./pkg/... -v -cover
+        echo "=== Unit tests ==="
+        go test ./internal/... ./pkg/... ./cmd/... -v -cover
 
-        echo "=== Running integration tests ==="
+        echo "=== Integration tests ==="
         go test ./test/integration/... -v -timeout 2m
 
-        echo "=== Tests passed, sleeping… ==="
+        echo "=== Done ==="
         exit 0
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:${PORT:-8080}/health || exit 1"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+    entrypoint:
+      - sh
+      - -c
+      - |
+        echo "Waiting for Postgres…"
+        until pg_isready -h postgres -U postgres; do sleep 2; done
+
+        echo "Importing movies…"
+        /app/import_all_movies || true
+
+        echo "Starting API…"
+        exec /app/server
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3000:80"
 
 volumes:
   db_data:

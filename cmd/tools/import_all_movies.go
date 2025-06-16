@@ -58,7 +58,7 @@ func upsertFilms(repo *repository.Repo, films []kinopoisk.Film) {
 			Year:            yearInt,
 			Description:     f.Description,
 			PosterURL:       f.PosterURL,
-			RatingKinopoisk: f.RatingKinopoisk, // <— новое поле
+			RatingKinopoisk: f.RatingKinopoisk,
 		}
 		if err := repo.UpsertMovie(movie); err != nil {
 			log.Printf("upsert failed %d: %v", movie.ID, err)

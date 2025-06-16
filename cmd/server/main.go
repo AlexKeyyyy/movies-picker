@@ -14,7 +14,7 @@ import (
 	"github.com/AlexKeyyyy/movies-picker/pkg/kinopoisk"
 	"github.com/AlexKeyyyy/movies-picker/pkg/youtube"
 	"github.com/go-chi/chi/v5"
-    "github.com/go-chi/cors"
+	"github.com/go-chi/cors"
 )
 
 func main() {
@@ -35,13 +35,19 @@ func main() {
 
 	r := chi.NewRouter()
 
-	r.Use(cors.Handler(cors.Options{
-        AllowedOrigins:   []string{"http://localhost:5173"},
-        AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-        AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-        AllowCredentials: true,
-        MaxAge:           300,
-    }))
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"*"},
+		AllowCredentials: true,
+	})
+
+	// Применяем CORS к маршрутизатору `r`
+	r.Use(c.Handler)
+
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
 
 	// --- Public endpoints ---
 	r.Post("/auth/register", authH.Register)
@@ -76,9 +82,7 @@ func main() {
 	fsSpec := http.StripPrefix("/docs/spec/", http.FileServer(http.Dir("./docs")))
 	r.Handle("/docs/spec/*", fsSpec)
 
-	// Swagger UI (httpSwagger само развернёт UI и подтянет openapi.yml по URL)
 	r.Get("/docs/*", httpSwagger.Handler(
-		// указываем абсолютный URL до вашей спецификации
 		httpSwagger.URL("http://localhost:"+cfg.Port+"/docs/spec/openapi.yml"),
 	))
 
