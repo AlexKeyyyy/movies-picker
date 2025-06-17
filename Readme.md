@@ -1,143 +1,137 @@
-# Movie Picker (Movie Tracker)
+# Movies Picker
 
-**Веб-сервис подбора и отслеживания фильмов**  
-Позволяет:
+## 1. Определение проблемы
 
-- Искать фильмы по названию или ключевым словам (через Kinopoisk API).
-- Просматривать детали фильма (описание, год, постер).
-- Добавлять фильмы в личный список "Смотреть позже".
-- Сохранять собственные рейтинги фильмов.
-- Получать ссылки на авторитетные видео-разборы (YouTube Data API).
+В эпоху стриминговых сервисов и онлайн-баз (Kinopoisk, IMDb, YouTube) пользователю доступно огромное количество фильмов и сопутствующих материалов (аннотации, постеры, обзоры, мерч). Подбор действительно «интересного» фильма требует перехода между разными платформами, ручного сохранения ссылок и заметок, а поиск глубоких аналитических видео-разборов превращается в длительный и неудобный процесс.
 
----
+**Ключевые боли пользователей:**
 
-## 📦 Технологический стек
+- Нет единого списка «Смотреть позже»: ссылки теряются в закладках или заметках.
+- Трудоёмкий поиск качественных видеообзоров на YouTube.
+- Отсутствие централизованного хранилища собственных рейтингов и впечатлений.
 
-- **Backend:** Go
-- **Database:** PostgreSQL
-- **Внешние API:**
-  - Kinopoisk Unofficial API (фильмы)
-  - YouTube Data API v3 (обзоры)
-- **Контейнеризация (опционально):** Docker & Docker Compose
-- **Тестирование:**
-  - Unit-тесты (Go)
-  - Интеграционные тесты (httptest)
+**Чёткая формулировка проблемы:**  
+Пользователи теряют время на фрагментарный поиск информации и обзорных видео, не могут удобно сохранить список «Смотреть позже» и собственные оценки, что приводит к забыванию интересных фильмов и неудобству при поиске глубоких разборов.
 
 ---
 
-## 🚀 Быстрый старт
+## 2. Выработка требований
+
+### 2.1. Пользовательские истории
+
+1. **Добавление фильма в «Смотреть позже»**  
+   – Поиск по названию/жанру, добавление одним кликом.
+2. **Рекомендации на основе рейтингов**  
+   – Выставление оценки (1–10) и последующее предложение похожих фильмов.
+3. **Поиск авторитетных видеообзоров**  
+   – Получение ссылок на 1–3 самых релевантных YouTube-разбора.
+4. **Управление списком «Смотреть позже»**  
+   – Удаление из списка, отображение временной метки добавления.
+5. **Регистрация и авторизация**  
+   – Электронная почта + пароль, доступ к персональным данным.
+
+### 2.2. Нагрузочные ориентиры
+
+- **Активных пользователей:** ~10 000/сутки
+- **Пиковая нагрузка:** до 100 запросов/сек
+- **R/W соотношение:** 80 % чтения / 20 % записи
+- **Хранилище:** ≈300 МБ данных (PostgreSQL)
+
+---
+
+## 3. Архитектура и дизайн
+
+### 3.1. Диаграммы C4
+
+- **Контекст (Level 1):**  
+  Пользователь ⇄ React SPA ⇄ Go API ⇄ {Kinopoisk API, YouTube Data API}
+- **Контейнеры (Level 2):**
+  - **React SPA** (статический сервер)
+  - **Go API Server** (REST, JWT-авторизация)
+  - **PostgreSQL** (таблицы users, movies, watchlist, ratings)
+  - **(опционально) Redis** — кеш для снижения числа обращений к внешним API
+
+### 3.2. Нефункциональные требования
+
+- **Производительность:**  
+  – Чтение из БД < 200 мс (95 %)  
+  – Внешние API < 1 с  
+  – Запись < 300 мс
+- **Доступность:** аптайм ≥ 99.9 %, healthchecks в Docker
+- **Надёжность:** ACID, бэкапы Еженедельно
+- **Безопасность:** HTTPS, JWT (1 ч), bcrypt для паролей, валидация входных данных
+- **Масштабируемость:**  
+  – Горизонтальное масштабирование API (несколько контейнеров за LB)  
+  – Репликация PostgreSQL (мастер/реплики)  
+  – Кеширование (Redis или встроенный кеш Go)
+
+---
+
+## 4. Контракты API
+
+| Эндпоинт                                    | Метод  | Описание                                                                                    |
+| ------------------------------------------- | ------ | ------------------------------------------------------------------------------------------- |
+| `/api/movies/search?q={query}`              | GET    | Поиск фильмов по названию/ключевым словам                                                   |
+| `/api/movies/{movie_id}`                    | GET    | Детали фильма (кэш 30 суток → Kinopoisk API)                                                |
+| `/api/movies/{movie_id}/reviews`            | GET    | 1–3 ссылки на YouTube-разборы                                                               |
+| `/api/users/{user_id}/watchlist`            | GET    | Список «Смотреть позже» (JWT)                                                               |
+| `/api/users/{user_id}/watchlist`            | POST   | Добавление в «Смотреть позже» (`{ "movie_id": 12345 }`)                                     |
+| `/api/users/{user_id}/watchlist/{movie_id}` | DELETE | Удаление из «Смотреть позже» (204 No Content)                                               |
+| `/api/users/{user_id}/ratings`              | GET    | Список рейтингов пользователя (JWT)                                                         |
+| `/api/users/{user_id}/ratings`              | POST   | Выставление/обновление оценки (`{ "movie_id": 12345, "rating": 8 }`)                        |
+| `/api/auth/register`                        | POST   | Регистрация (`{ "email": "...", "password": "..." }`) → 201 Created                         |
+| `/api/auth/login`                           | POST   | Логин (`{ "email": "...", "password": "..." }`) → 200 OK + `{ "access_token": "...", ... }` |
+
+---
+
+## 5. Установка и сборка
 
 1. **Клонировать репозиторий**
 
    ```bash
-   git clone https://github.com/AlexKeyyyy/movies-picker.git
+   git clone https://github.com/your-org/movies-picker.git
    cd movies-picker
    ```
 
-2. **Создать файл окружения `.env`**
+2. **Создать .env**
 
-   ```ini
+   ```dotenv
    PORT=8080
-   DB_URL=postgres://user:password@localhost:5432/moviedb?sslmode=disable
-   JWT_SECRET=your_jwt_secret
-   KINOPOISK_API_KEY=your_kinopoisk_api_key
-   ```
-
-3. **Установить зависимости**
-
-   ```bash
-   go mod tidy
-   ```
-
-4. **Запустить локальную БД**
-
-   - Через Docker Compose:
-
-     ```bash
-     docker compose up -d postgres
-     ```
-
-   - Или вручную (pgAdmin / локальный сервер).
-
-5. **Запустить сервер**
-
-   ```bash
-   go run cmd/server/main.go
-   ```
-
----
-
-## 🗄️ База данных
-
-### Создание таблиц (PostgreSQL)
-
-```sql
-CREATE TABLE users (
-  user_id       SERIAL PRIMARY KEY,
-  email         VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE movies (
-  movie_id    BIGINT PRIMARY KEY,
-  title       VARCHAR(255) NOT NULL,
-  year        INT,
-  poster_url  TEXT,
-  description TEXT,
-  last_sync   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE watchlist (
-  user_id    INT NOT NULL,
-  movie_id   BIGINT NOT NULL,
-  added_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY(user_id, movie_id),
-  FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-  FOREIGN KEY(movie_id) REFERENCES movies(movie_id) ON DELETE CASCADE
-);
-
-CREATE TABLE ratings (
-  user_id  INT NOT NULL,
-  movie_id BIGINT NOT NULL,
-  rating   SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 10),
-  rated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY(user_id, movie_id),
-  FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-  FOREIGN KEY(movie_id) REFERENCES movies(movie_id) ON DELETE CASCADE
-);
-```
-
----
-
-## Сборка
-
-На Windows:
-
-1. Создать .env файл, например:
-   PORT=8080
-   DB_URL=postgres://postgres:alexkoba@postgres:5432/moviedb?sslmode=disable
+   DB_URL=postgres://postgres:alexkobaa@postgres:5432/moviedb?sslmode=disable
    JWT_SECRET=hello
    KINOPOISK_API_KEY=bda3897d-a997-48e4-97a8-0d0bd514e7b3
    YOUTUBE_API_KEY=AIzaSyBGnHMN-tDg43gjwwpXcWj1fsjXTH28oQw
+   ```
 
-2. Запустить ./run.ps1
+3. **Сборка и запуск**
 
-На Linux:
+   ```bash
+   chmod +x run.sh
+   ./run.sh
+   ```
 
-1. Аналогично
-2. Запустить ./run.sh
+Скрипт установит зависимости, соберёт Backend и Frontend и запустит сервисы. Также пройдут Unit-тесты и интеграционные.
 
-## Запуск локально
+## 6. Документация
 
-1. Создать .env файл, например:
-   PORT=8080
-   DB_URL=postgres://postgres:alexkoba@localhost:5432/moviedb?sslmode=disable
-   JWT_SECRET=hello
-   KINOPOISK_API_KEY=bda3897d-a997-48e4-97a8-0d0bd514e7b3
-   YOUTUBE_API_KEY=AIzaSyBGnHMN-tDg43gjwwpXcWj1fsjXTH28oQw
+6. Документация
 
-2. go run cmd/server/main.go
+- Swagger UI:
+  Доступен по адресу http://localhost:8080/docs/
 
-Спецификация Swagger находится по адресу, например:
-localhost:PORT/docs
+## 7. Процесс разработки
+
+- GitFlow:
+  – feature/\*, develop, main
+- Инструменты тестирования:
+  – Postman для API
+  - Unit-тесты (Go)
+  - Интеграционные тесты (Go)
+- CI/CD:
+  Настроен GitHub Actions для сборки и тестов при каждом PR. Проходят Unit-тесты, интеграционные, сборка backend и frontend.
+
+## 8. Авторы проекта
+
+- Коба Алексей - backend + DevOps
+- Вдовина Светлана - frontend
+- Месропян Артем - Unit-тестирование и интеграционное тестирование
