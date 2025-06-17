@@ -1,5 +1,11 @@
 # Movies Picker
 
+![Главная страница](report/images/MainPage.png)
+![Обзоры YouTube](report/images/YoutubeReviews.png)
+![Смотреть позже](report/images/WatchList.png)
+![Рейтинги](report/images/Ratings.png)
+![Профиль](report/images/Profile.png)
+
 ## 1. Определение проблемы
 
 В эпоху стриминговых сервисов и онлайн-баз (Kinopoisk, IMDb, YouTube) пользователю доступно огромное количество фильмов и сопутствующих материалов (аннотации, постеры, обзоры, мерч). Подбор действительно «интересного» фильма требует перехода между разными платформами, ручного сохранения ссылок и заметок, а поиск глубоких аналитических видео-разборов превращается в длительный и неудобный процесс.
@@ -22,9 +28,9 @@
 1. **Добавление фильма в «Смотреть позже»**  
    – Поиск по названию/жанру, добавление одним кликом.
 2. **Рекомендации на основе рейтингов**  
-   – Выставление оценки (1–10) и последующее предложение похожих фильмов.
+   – Выставление оценки (1–5) и последующее предложение похожих фильмов.
 3. **Поиск авторитетных видеообзоров**  
-   – Получение ссылок на 1–3 самых релевантных YouTube-разбора.
+   – Получение ссылок самых релевантных YouTube-разбора.
 4. **Управление списком «Смотреть позже»**  
    – Удаление из списка, отображение временной метки добавления.
 5. **Регистрация и авторизация**  
@@ -73,14 +79,17 @@
 | ------------------------------------------- | ------ | ------------------------------------------------------------------------------------------- |
 | `/api/movies/search?q={query}`              | GET    | Поиск фильмов по названию/ключевым словам                                                   |
 | `/api/movies/{movie_id}`                    | GET    | Детали фильма (кэш 30 суток → Kinopoisk API)                                                |
-| `/api/movies/{movie_id}/reviews`            | GET    | 1–3 ссылки на YouTube-разборы                                                               |
+| `/api/movies/{movie_id}/reviews`            | GET    | Ссылки на YouTube-разборы                                                                   |
 | `/api/users/{user_id}/watchlist`            | GET    | Список «Смотреть позже» (JWT)                                                               |
 | `/api/users/{user_id}/watchlist`            | POST   | Добавление в «Смотреть позже» (`{ "movie_id": 12345 }`)                                     |
 | `/api/users/{user_id}/watchlist/{movie_id}` | DELETE | Удаление из «Смотреть позже» (204 No Content)                                               |
 | `/api/users/{user_id}/ratings`              | GET    | Список рейтингов пользователя (JWT)                                                         |
 | `/api/users/{user_id}/ratings`              | POST   | Выставление/обновление оценки (`{ "movie_id": 12345, "rating": 8 }`)                        |
+| `/api/users/{user_id}/ratings/{movie_id}`   | DELETE | Удаление оценки (204 No Content)                                                            |
 | `/api/auth/register`                        | POST   | Регистрация (`{ "email": "...", "password": "..." }`) → 201 Created                         |
 | `/api/auth/login`                           | POST   | Логин (`{ "email": "...", "password": "..." }`) → 200 OK + `{ "access_token": "...", ... }` |
+| `/api/users/me`                             | GET    | Получение профиля текущего пользователя                                                     |
+| `/api/users/me`                             | PATCH  | Обновление email или пароля                                                                 |
 
 ---
 
@@ -89,7 +98,7 @@
 1. **Клонировать репозиторий**
 
    ```bash
-   git clone https://github.com/your-org/movies-picker.git
+   git clone https://github.com/AlexKeyyyy/movies-picker.git
    cd movies-picker
    ```
 
@@ -97,7 +106,7 @@
 
    ```dotenv
    PORT=8080
-   DB_URL=postgres://postgres:alexkobaa@postgres:5432/moviedb?sslmode=disable
+   DB_URL=postgres://postgres:alexkoba@postgres:5432/moviedb?sslmode=disable
    JWT_SECRET=hello
    KINOPOISK_API_KEY=bda3897d-a997-48e4-97a8-0d0bd514e7b3
    YOUTUBE_API_KEY=AIzaSyBGnHMN-tDg43gjwwpXcWj1fsjXTH28oQw
@@ -114,10 +123,10 @@
 
 ## 6. Документация
 
-6. Документация
+![Swagger UI](report/images/Swagger.png)
 
 - Swagger UI:
-  Доступен по адресу http://localhost:8080/docs/
+  Доступен после запуска/сборки по адресу http://localhost:8080/docs/
 
 ## 7. Процесс разработки
 
@@ -132,6 +141,6 @@
 
 ## 8. Авторы проекта
 
-- Коба Алексей - backend + DevOps
-- Вдовина Светлана - frontend
-- Месропян Артем - Unit-тестирование и интеграционное тестирование
+- Коба Алексей - гр. 5130904/20101 - backend + DevOps
+- Вдовина Светлана - гр. 5130904/20101 - frontend
+- Месропян Артем - гр. 5130904/20101 - Unit-тестирование и интеграционное тестирование
