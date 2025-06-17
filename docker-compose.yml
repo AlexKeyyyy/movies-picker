@@ -25,6 +25,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      api:
+        condition: service_healthy
     entrypoint:
       - sh
       - -c
@@ -33,10 +35,12 @@ services:
         go test ./internal/... ./pkg/... ./cmd/... -v -cover
 
         echo "=== Integration tests ==="
+        export API_URL="http://api:${PORT:-8080}"
         go test ./test/integration/... -v -timeout 2m
 
         echo "=== Done ==="
         exit 0
+
 
   api:
     build:
