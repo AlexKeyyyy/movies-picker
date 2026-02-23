@@ -2,14 +2,19 @@ name: "CI: Unit & Integration Tests"
 
 on:
   push:
-    branches: [main, develop]
+    branches: ["**"]
   pull_request:
-    branches: [main, develop]
+    branches: ["**"]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   unit-tests:
     name: "🧪 Unit Tests"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -29,16 +34,7 @@ jobs:
     name: "🔗 Integration Tests"
     needs: unit-tests
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:13
-        env:
-          POSTGRES_DB: moviedb
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: alexkoba
-        ports:
-          - 5432:5432
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
@@ -64,21 +60,35 @@ jobs:
 
       - name: Wait for Postgres to be ready
         run: |
-          until pg_isready -h localhost -U postgres; do
+          for i in {1..60}; do
+            if pg_isready -h localhost -U postgres; then
+              exit 0
+            fi
             echo "Waiting for Postgres..."
             sleep 2
           done
+          echo "Postgres did not become ready in time"
+          docker compose logs postgres
+          exit 1
 
       - name: Wait for API healthy
         run: |
-          until curl -f http://localhost:8080/movies?page=1&size=1; do
+          for i in {1..60}; do
+            if curl -fsS "http://localhost:8080/movies?page=1&size=1" >/dev/null; then
+              exit 0
+            fi
             echo "Waiting for API..."
             sleep 2
           done
+          echo "API did not become ready in time"
+          docker compose logs api
+          exit 1
 
       - name: Run integration tests
         env:
           API_URL: http://localhost:8080
         run: docker compose run --rm builder
-  
 
+      - name: Dump docker logs on failure
+        if: failure()
+        run: docker compose logs --no-color

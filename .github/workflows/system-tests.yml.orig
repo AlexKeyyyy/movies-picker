@@ -1,23 +1,32 @@
 name: "CI: System E2E Tests"
 
 on:
+<<<<<<< ours
+=======
   push:
     branches: ["**"]
   pull_request:
     branches: ["**"]
+>>>>>>> theirs
   workflow_dispatch:
   schedule:
     - cron: "0 6 * * 1"
 
+<<<<<<< ours
+=======
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+>>>>>>> theirs
 jobs:
   system-tests:
     name: "🧭 System E2E"
     runs-on: ubuntu-latest
+<<<<<<< ours
+=======
     timeout-minutes: 30
+>>>>>>> theirs
 
     steps:
       - uses: actions/checkout@v4
@@ -48,6 +57,19 @@ jobs:
 
       - name: Wait for Postgres
         run: |
+<<<<<<< ours
+          until pg_isready -h localhost -U postgres; do
+            echo "Waiting for Postgres..."
+            sleep 2
+          done
+
+      - name: Wait for API
+        run: |
+          until curl -f "http://localhost:8080/movies?page=1&size=1"; do
+            echo "Waiting for API..."
+            sleep 2
+          done
+=======
           for i in {1..60}; do
             if pg_isready -h localhost -U postgres; then
               exit 0
@@ -71,12 +93,16 @@ jobs:
           echo "API did not become ready in time"
           docker compose logs api
           exit 1
+>>>>>>> theirs
 
       - name: Run system tests
         env:
           API_URL: http://localhost:8080
         run: go test ./test/system -v
+<<<<<<< ours
+=======
 
       - name: Dump docker logs on failure
         if: failure()
         run: docker compose logs --no-color
+>>>>>>> theirs
