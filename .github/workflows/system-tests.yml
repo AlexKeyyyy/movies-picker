@@ -46,16 +46,18 @@ jobs:
           docker compose build api builder
           docker compose up -d postgres api
 
-      - name: Wait for Postgres
+      - name: Wait for Postgres container health
         run: |
           for i in {1..60}; do
-            if pg_isready -h localhost -U postgres; then
+            STATUS=$(docker inspect -f "{{.State.Health.Status}}" $(docker compose ps -q postgres) 2>/dev/null || true)
+            if [ "$STATUS" = "healthy" ]; then
               exit 0
             fi
-            echo "Waiting for Postgres..."
+            echo "Waiting for Postgres health... current=$STATUS"
             sleep 2
           done
-          echo "Postgres did not become ready in time"
+          echo "Postgres did not become healthy in time"
+          docker compose ps
           docker compose logs postgres
           exit 1
 
