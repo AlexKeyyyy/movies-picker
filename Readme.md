@@ -139,7 +139,15 @@
 - CI/CD:
   Настроен GitHub Actions для сборки и тестов при каждом PR. Проходят Unit-тесты, интеграционные, сборка backend и frontend.
 
-## 8. Авторы проекта
+## 8. Артефакты весеннего тестирования
+
+- Отчёт и аудит покрытия требований: `docs/testing/spring-testing-report.md`
+- Интеграционные сценарии: `test/integration/*.go`
+- Системный E2E сценарий: `test/system/e2e_user_journey_test.go`
+- CI интеграционных тестов: `.github/workflows/test.yml`
+- CI системных тестов (manual + schedule): `.github/workflows/system-tests.yml`
+
+## 9. Авторы проекта
 
 - Коба Алексей - гр. 5130904/20101 - backend + DevOps
 - Вдовина Светлана - гр. 5130904/20101 - frontend

@@ -3,12 +3,11 @@ package integration
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -18,7 +17,6 @@ var (
 )
 
 func TestMain(m *testing.M) {
-
 	time.Sleep(8 * time.Second)
 
 	baseURL = os.Getenv("API_URL")
@@ -26,36 +24,41 @@ func TestMain(m *testing.M) {
 		baseURL = "http://localhost:8080"
 	}
 
-	// 3) Регистрируем нового пользователя
-	regBody, _ := json.Marshal(map[string]string{"email": "int@int.com", "password": "pass123"})
-	resp, err := http.Post(baseURL+"/auth/register", "application/json", bytes.NewReader(regBody))
+	email := fmt.Sprintf("int_%d@example.com", time.Now().UnixNano())
+	credentials, _ := json.Marshal(map[string]string{"email": email, "password": "pass123"})
+
+	resp, err := http.Post(baseURL+"/auth/register", "application/json", bytes.NewReader(credentials))
 	if err != nil {
 		panic("register error: " + err.Error())
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		panic(fmt.Sprintf("register status %d", resp.StatusCode))
+	}
+
 	var regResp struct {
-		UserID int64  `json:"user_id"`
-		Email  string `json:"email"`
+		UserID int64 `json:"user_id"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&regResp); err != nil {
 		panic("decode register: " + err.Error())
 	}
-	assert.Equal(nil, http.StatusCreated, resp.StatusCode)
 	userID = regResp.UserID
 
-	// 4) Логинимся, чтобы получить токен
-	resp2, err := http.Post(baseURL+"/auth/login", "application/json", bytes.NewReader(regBody))
+	resp2, err := http.Post(baseURL+"/auth/login", "application/json", bytes.NewReader(credentials))
 	if err != nil {
 		panic("login error: " + err.Error())
 	}
 	defer resp2.Body.Close()
+	if resp2.StatusCode != http.StatusOK {
+		panic(fmt.Sprintf("login status %d", resp2.StatusCode))
+	}
+
 	var loginResp struct {
 		AccessToken string `json:"access_token"`
 	}
 	if err := json.NewDecoder(resp2.Body).Decode(&loginResp); err != nil {
 		panic("decode login: " + err.Error())
 	}
-	assert.Equal(nil, http.StatusOK, resp2.StatusCode)
 	token = loginResp.AccessToken
 
 	os.Exit(m.Run())
