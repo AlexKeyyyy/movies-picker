@@ -3,25 +3,23 @@ package service
 import (
 	"errors"
 	"fmt"
-	"time"
 	"log"
+	"time"
 
 	"github.com/AlexKeyyyy/movies-picker/internal/models"
-	"github.com/AlexKeyyyy/movies-picker/internal/repository"
 	"github.com/AlexKeyyyy/movies-picker/pkg/kinopoisk"
-	"github.com/AlexKeyyyy/movies-picker/pkg/youtube"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct {
-	repo      *repository.Repo
-	kpClient  *kinopoisk.Client
-	ytClient  *youtube.Client
+	repo      RepoIface
+	kpClient  KPIface
+	ytClient  YTIface
 	jwtSecret string
 }
 
-func NewService(repo *repository.Repo, kp *kinopoisk.Client, yt *youtube.Client, jwtSecret string) *Service {
+func NewService(repo RepoIface, kp KPIface, yt YTIface, jwtSecret string) *Service {
 	return &Service{repo: repo, kpClient: kp, ytClient: yt, jwtSecret: jwtSecret}
 }
 
@@ -163,13 +161,12 @@ func (s *Service) GetMovieReviews(id int64) ([]models.ReviewItem, error) {
 		log.Printf("GetMovieByID failed for id %d: %v", id, err)
 		return nil, fmt.Errorf("movie not found: %w", err)
 	}
-	
+
 	reviews, err := s.ytClient.SearchReviews(m.Title, 10)
 	if err != nil {
 		log.Printf("YouTube search failed for movie title '%s': %v", m.Title, err)
 		return nil, fmt.Errorf("youtube search failed: %w", err)
 	}
-	
 
 	var out []models.ReviewItem
 	for _, r := range reviews {
