@@ -1,76 +1,107 @@
 package integration
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// helper в начале файла (общий для обоих тестов)
-func getFirstMovieID(t *testing.T) int {
-	resp, err := http.Get(fmt.Sprintf("%s/movies?page=1&size=1", baseURL))
-	assert.NoError(t, err)
-	defer resp.Body.Close()
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+// INT-21: Добавление/обновление рейтинга фильма
+func TestINT21_Ratings_CreateRating(t *testing.T) {
+    movieID := getFirstMovieID(t)
 
-	var arr []struct {
-		MovieID int `json:"movie_id"`
-	}
-	assert.NoError(t, json.NewDecoder(resp.Body).Decode(&arr))
-	if len(arr) == 0 {
-		t.Fatal("no movies available to test with")
-	}
-	return arr[0].MovieID
+    req := authRequest(t, http.MethodPost,
+        fmt.Sprintf("%s/users/%d/ratings", baseURL, userID),
+        map[string]int{"movie_id": movieID, "rating": 8},
+    )
+    resp := doRequest(t, req)
+    defer resp.Body.Close()
+
+    require.Equal(t, http.StatusCreated, resp.StatusCode,
+        "создание рейтинга должно вернуть 201")
+
+    var result struct {
+        MovieID int `json:"movie_id"`
+        Rating  int `json:"rating"`
+    }
+    require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
+    assert.Equal(t, movieID, result.MovieID)
+    assert.Equal(t, 8, result.Rating)
 }
 
-func TestRatingsFlow(t *testing.T) {
-	client := http.DefaultClient
+// INT-22: Получение списка рейтингов пользователя
+func TestINT22_Ratings_GetList(t *testing.T) {
+    movieID := getFirstMovieID(t)
 
-	// Получаем реальный movieID
-	movieID := getFirstMovieID(t)
+    // Убеждаемся что рейтинг выставлен
+    addReq := authRequest(t, http.MethodPost,
+        fmt.Sprintf("%s/users/%d/ratings", baseURL, userID),
+        map[string]int{"movie_id": movieID, "rating": 9},
+    )
+    addResp := doRequest(t, addReq)
+    addResp.Body.Close()
 
-	// 1) Add rating
-	rp := map[string]int{"movie_id": movieID, "rating": 8}
-	b, _ := json.Marshal(rp)
-	req, _ := http.NewRequest(
-		"POST",
-		fmt.Sprintf("%s/users/%d/ratings", baseURL, userID),
-		bytes.NewReader(b),
-	)
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
-	assert.NoError(t, err)
-	defer resp.Body.Close()
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+    // Получаем список
+    req := authRequest(t, http.MethodGet,
+        fmt.Sprintf("%s/users/%d/ratings", baseURL, userID), nil)
+    resp := doRequest(t, req)
+    defer resp.Body.Close()
 
-	// 2) Get ratings — ожидаем наш rating
-	req2, _ := http.NewRequest(
-		"GET",
-		fmt.Sprintf("%s/users/%d/ratings", baseURL, userID),
-		nil,
-	)
-	req2.Header.Set("Authorization", "Bearer "+token)
-	resp2, err := client.Do(req2)
-	assert.NoError(t, err)
-	defer resp2.Body.Close()
-	assert.Equal(t, http.StatusOK, resp2.StatusCode)
+    require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	var ratings []struct {
-		MovieID int `json:"movie_id"`
-		Rating  int `json:"rating"`
-	}
-	assert.NoError(t, json.NewDecoder(resp2.Body).Decode(&ratings))
-	found := false
-	for _, r := range ratings {
-		if r.MovieID == movieID && r.Rating == 8 {
-			found = true
-			break
-		}
-	}
-	assert.True(t, found, "added rating must be present")
+    var ratings []struct {
+        MovieID int `json:"movie_id"`
+        Rating  int `json:"rating"`
+    }
+    require.NoError(t, json.NewDecoder(resp.Body).Decode(&ratings))
+    assert.NotEmpty(t, ratings, "список рейтингов не должен быть пустым")
+
+    found := false
+    for _, r := range ratings {
+        if r.MovieID == movieID {
+            found = true
+            assert.Equal(t, 9, r.Rating, "рейтинг должен быть последним выставленным (9)")
+            break
+        }
+    }
+    assert.True(t, found, "выставленный рейтинг должен присутствовать в списке")
+}
+
+// INT-23: Удаление рейтинга
+func TestINT23_Ratings_DeleteRating(t *testing.T) {
+    movieID := getFirstMovieID(t)
+
+    // Добавляем рейтинг
+    addReq := authRequest(t, http.MethodPost,
+        fmt.Sprintf("%s/users/%d/ratings", baseURL, userID),
+        map[string]int{"movie_id": movieID, "rating": 7},
+    )
+    addResp := doRequest(t, addReq)
+    addResp.Body.Close()
+
+    // Удаляем
+    delReq := authRequest(t, http.MethodDelete,
+        fmt.Sprintf("%s/users/%d/ratings/%d", baseURL, userID, movieID), nil)
+    delResp := doRequest(t, delReq)
+    defer delResp.Body.Close()
+
+    assert.Equal(t, http.StatusNoContent, delResp.StatusCode,
+        "удаление рейтинга должно вернуть 204")
+}
+
+// INT-24: Некорректный payload при создании рейтинга (негативный — 400)
+func TestINT24_Ratings_InvalidPayload_Negative(t *testing.T) {
+    req := authRequest(t, http.MethodPost,
+        fmt.Sprintf("%s/users/%d/ratings", baseURL, userID),
+        map[string]string{"movie_id": "bad", "rating": "bad"},
+    )
+    resp := doRequest(t, req)
+    defer resp.Body.Close()
+
+    assert.Equal(t, http.StatusBadRequest, resp.StatusCode,
+        "некорректный payload должен вернуть 400")
 }

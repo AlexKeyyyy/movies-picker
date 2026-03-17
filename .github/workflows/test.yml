@@ -2,26 +2,27 @@ name: "CI: Unit & Integration Tests"
 
 on:
   push:
-    branches: [main, develop]
+    branches: ["**"]
   pull_request:
-    branches: [main, develop]
+    branches: ["**"]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   unit-tests:
     name: "🧪 Unit Tests"
     runs-on: ubuntu-latest
-
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: "1.21"
-
       - name: Download modules
         run: go mod download
-
       - name: Run unit tests
         run: go test ./internal/... ./pkg/... -v -cover
 
@@ -29,17 +30,7 @@ jobs:
     name: "🔗 Integration Tests"
     needs: unit-tests
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:13
-        env:
-          POSTGRES_DB: moviedb
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: alexkoba
-        ports:
-          - 5432:5432
-
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -53,32 +44,63 @@ jobs:
           echo "PORT=8080" > .env
           echo "DB_URL=postgres://postgres:alexkoba@postgres:5432/moviedb?sslmode=disable" >> .env
           echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
-          echo "KINOPOISK_API_KEY=${{ secrets.KINOPOISK_API_KEY }}" >> .env
-          echo "YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}" >> .env
+          echo "KINOPOISK_API_KEY=mock-key-not-used" >> .env
+          echo "YOUTUBE_API_KEY=mock-key-not-used" >> .env
 
-      - name: Build and start API & DB
+      - name: Build and start all services (with mock-server)
         run: |
           docker compose down -v
-          docker compose build api builder
-          docker compose up -d postgres api
+          docker compose build api builder mock-server
+          docker compose up -d postgres mock-server
 
-      - name: Wait for Postgres to be ready
+      - name: Wait for mock-server
         run: |
-          until pg_isready -h localhost -U postgres; do
-            echo "Waiting for Postgres..."
+          for i in {1..30}; do
+            if curl -fsS "http://localhost:9090/health" >/dev/null; then
+              echo "Mock server is ready"
+              exit 0
+            fi
+            echo "Waiting for mock-server..."
             sleep 2
           done
+          echo "Mock server did not start in time"
+          docker compose logs mock-server
+          exit 1
+
+      - name: Wait for Postgres container health
+        run: |
+          for i in {1..60}; do
+            STATUS=$(docker inspect -f "{{.State.Health.Status}}" $(docker compose ps -q postgres) 2>/dev/null || true)
+            if [ "$STATUS" = "healthy" ]; then exit 0; fi
+            echo "Waiting for Postgres health... current=$STATUS"
+            sleep 2
+          done
+          echo "Postgres did not become healthy in time"
+          docker compose logs postgres
+          exit 1
+
+      - name: Start API (pointing to mock-server)
+        run: docker compose up -d api
 
       - name: Wait for API healthy
         run: |
-          until curl -f http://localhost:8080/movies?page=1&size=1; do
+          for i in {1..60}; do
+            if curl -fsS "http://localhost:8080/movies?page=1&size=1" >/dev/null; then
+              exit 0
+            fi
             echo "Waiting for API..."
             sleep 2
           done
+          echo "API did not become ready in time"
+          docker compose logs api
+          exit 1
 
       - name: Run integration tests
         env:
           API_URL: http://localhost:8080
-        run: docker compose run --rm builder
-  
+          MOCK_SERVER_URL: http://localhost:9090
+        run: go test ./test/integration/... -v -timeout 3m
 
+      - name: Dump docker logs on failure
+        if: failure()
+        run: docker compose logs --no-color
