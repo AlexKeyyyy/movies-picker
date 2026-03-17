@@ -18,16 +18,13 @@ test.describe('Смотреть позже', () => {
     await page.locator('.ant-card').first().click();
     await page.waitForURL(/\/movies\/\d+/);
 
-    // Жмём "К просмотру"
     await page.getByRole('button', { name: 'К просмотру' }).click();
 
-    // Переходим в watchlist через меню
     await page.getByRole('menuitem', { name: 'К просмотру' }).click();
     await page.waitForURL(/\/watchlist/);
 
     const watchlistCards = page.locator('.ant-card');
     expect(await watchlistCards.count()).toBeGreaterThan(0);
-    // Проверяем наличие русского названия "Начало" (Inception по-русски)
     await expect(watchlistCards.first()).toContainText('Начало');
   });
 
@@ -47,21 +44,16 @@ test.describe('Смотреть позже', () => {
     await page.locator('.ant-card').first().click();
     await page.waitForURL(/\/movies\/\d+/);
 
-    // Добавляем
     await page.getByRole('button', { name: 'К просмотру' }).click();
 
-    // Переходим в watchlist
     await page.getByRole('menuitem', { name: 'К просмотру' }).click();
     await page.waitForURL(/\/watchlist/);
 
-    // Убедимся, что фильм есть перед удалением
     await expect(page.locator('.ant-card').first()).toBeVisible();
 
-    // Удаляем первый фильм
     const firstCard = page.locator('.ant-card').first();
     await firstCard.getByRole('button', { name: 'Удалить' }).click();
 
-    // Ждём, пока карточка исчезнет
     await expect(page.locator('.ant-card')).toHaveCount(0, { timeout: 5000 });
   });
 });

@@ -21,11 +21,9 @@ test.describe('Рейтинги', () => {
     const stars = page.locator('.ant-rate-star');
     await stars.nth(3).click();
 
-    // Переходим в раздел "Мои оценки"
     await page.getByRole('menuitem', { name: 'Мои оценки' }).click();
     await page.waitForURL(/\/ratings/);
 
-    // Ждём загрузки списка
     await page.waitForSelector('.ant-spin', { state: 'hidden' });
     const ratingCards = page.locator('.ant-card');
     await expect(ratingCards.first()).toBeVisible({ timeout: 10000 });

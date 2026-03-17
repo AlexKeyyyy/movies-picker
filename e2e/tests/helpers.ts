@@ -10,17 +10,13 @@ export async function registerUser(page: Page, email: string, password: string) 
   await page.getByLabel('Пароль').fill(password);
   await page.getByRole('button', { name: 'Зарегистрироваться' }).click();
 
-  // Ждём редиректа на страницу логина
   await page.waitForURL(/.*\/login/, { timeout: 10000 }).catch(async () => {
-    // Если редиректа нет, проверяем, не появилась ли ошибка
     const error = page.locator('.ant-message-error');
     if (await error.isVisible()) {
       throw new Error('Registration failed: ' + (await error.textContent()));
     }
-    // Если нет ни редиректа, ни ошибки, просто продолжаем
   });
 
-  // Убеждаемся, что мы на странице логина (кнопка "Войти" видна)
   await expect(page.getByRole('button', { name: 'Войти' })).toBeVisible({ timeout: 5000 });
 }
 

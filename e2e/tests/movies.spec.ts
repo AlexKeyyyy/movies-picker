@@ -34,7 +34,6 @@ test.describe('Фильмы и обзоры', () => {
     await page.locator('.ant-card').first().click();
     await page.waitForURL(/\/movies\/\d+/);
 
-    // Проверяем, что заголовок фильма содержит название
     const title = page.locator('h3');
     await expect(title).toContainText(/Inception|Начало/i);
   });

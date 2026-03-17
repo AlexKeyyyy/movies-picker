@@ -19,7 +19,6 @@ test.describe('Авторизация', () => {
   test('TC-002: Вход с корректными данными', async ({ page }) => {
     await registerUser(page, email, password);
     await loginUser(page, email, password);
-    // Проверяем, что на главной есть карточки фильмов
     await expect(page.locator('.ant-card').first()).toBeVisible();
   });
 
