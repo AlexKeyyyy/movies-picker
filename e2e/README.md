@@ -29,9 +29,19 @@
      ```bash
      npm test
      ```
+   - **На конкретном браузере** :
+     ```bash
+     npx playwright test --project=chromium
+     npx playwright test --project=webkit
+     ```
    - **С открытым браузером** (позволяет наблюдать за выполнением):
      ```bash
      npm run test:headed
+     ```
+   - **С открытым браузером на конкретном браузере**:
+     ```bash
+     npx playwright test --headed --project=chromium
+     npx playwright test --headed --project=webkit
      ```
 
 4. Просмотр HTML-отчёта:
