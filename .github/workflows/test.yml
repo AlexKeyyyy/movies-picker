@@ -10,25 +10,31 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   unit-tests:
-    name: "🧪 Unit Tests"
+    name: "Unit Tests"
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: "1.21"
+
       - name: Download modules
         run: go mod download
+
       - name: Run unit tests
         run: go test ./internal/... ./pkg/... -v -cover
 
-    integration-tests:
-    name: "🔗 Integration Tests"
+  integration-tests:
+    name: "Integration Tests"
     needs: unit-tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -57,10 +63,10 @@ jobs:
           echo "KINOPOISK_API_KEY=mock-key-not-used" >> .env
           echo "YOUTUBE_API_KEY=mock-key-not-used" >> .env
 
-      - name: Build and start all services (with mock-server)
+      - name: Build and start base services
         run: |
           docker compose down -v
-          docker compose build api builder mock-server
+          docker compose build api mock-server
           docker compose up -d postgres mock-server
 
       - name: Wait for mock-server
@@ -80,7 +86,7 @@ jobs:
       - name: Wait for Postgres container health
         run: |
           for i in {1..60}; do
-            STATUS=$(docker inspect -f "{{.State.Health.Status}}" $(docker compose ps -q postgres) 2>/dev/null || true)
+            STATUS=$(docker inspect -f "{{.State.Health.Status}}" "$(docker compose ps -q postgres)" 2>/dev/null || true)
             if [ "$STATUS" = "healthy" ]; then
               exit 0
             fi
@@ -92,13 +98,13 @@ jobs:
           docker compose logs postgres
           exit 1
 
-      - name: Start API (pointing to mock-server)
+      - name: Start API
         run: docker compose up -d api
 
-      - name: Wait for API healthy
+      - name: Wait for API health
         run: |
           for i in {1..60}; do
-            if curl -fsS "http://localhost:8080/movies?page=1&size=1" >/dev/null; then
+            if curl -fsS "http://localhost:8080/health" >/dev/null; then
               exit 0
             fi
             echo "Waiting for API..."
@@ -117,4 +123,3 @@ jobs:
       - name: Dump docker logs on failure
         if: failure()
         run: docker compose logs --no-color
-
