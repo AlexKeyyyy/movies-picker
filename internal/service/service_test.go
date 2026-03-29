@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -331,6 +332,22 @@ func TestUpdateProfile_NoChanges(t *testing.T) {
 
 // Тест 11 — Обновление профиля: пользователь не найден
 // Техника: негативный сценарий
+func TestUpdateProfile_SameEmailKeepsValue(t *testing.T) {
+	repo := new(MockRepo)
+	svc := newTestSvc(repo, nil, nil)
+
+	original := &models.User{ID: 1, Email: "same@example.com", PasswordHash: "stable_hash"}
+	repo.On("GetUserByID", int64(1)).Return(original, nil)
+	repo.On("UpdateUser", mock.AnythingOfType("*models.User")).Return(nil)
+
+	user, err := svc.UpdateProfile(1, "same@example.com", "")
+
+	require.NoError(t, err)
+	assert.Equal(t, "same@example.com", user.Email)
+	assert.Equal(t, "stable_hash", user.PasswordHash)
+	repo.AssertExpectations(t)
+}
+
 func TestUpdateProfile_UserNotFound(t *testing.T) {
 	repo := new(MockRepo)
 	svc := newTestSvc(repo, nil, nil)
@@ -338,6 +355,21 @@ func TestUpdateProfile_UserNotFound(t *testing.T) {
 	repo.On("GetUserByID", int64(404)).Return(nil, errors.New("not found"))
 
 	user, err := svc.UpdateProfile(404, "x@x.com", "")
+
+	assert.Error(t, err)
+	assert.Nil(t, user)
+	repo.AssertExpectations(t)
+}
+
+func TestUpdateProfile_UpdateUserError(t *testing.T) {
+	repo := new(MockRepo)
+	svc := newTestSvc(repo, nil, nil)
+
+	original := &models.User{ID: 1, Email: "user@example.com", PasswordHash: "hash"}
+	repo.On("GetUserByID", int64(1)).Return(original, nil)
+	repo.On("UpdateUser", mock.AnythingOfType("*models.User")).Return(errors.New("update failed"))
+
+	user, err := svc.UpdateProfile(1, "new@example.com", "")
 
 	assert.Error(t, err)
 	assert.Nil(t, user)
@@ -589,6 +621,146 @@ func TestAddToWatchlist_Success(t *testing.T) {
 
 // Тест 25 — Полный цикл рейтинга: выставить → получить → удалить
 // Техника: попарное тестирование — покрываем три операции одной связанной цепочкой
+func TestSearchMovies_ReturnsRepoResults(t *testing.T) {
+	repo := new(MockRepo)
+	kpMock := new(MockKP)
+	svc := newTestSvc(repo, kpMock, nil)
+
+	expected := []models.Movie{
+		{ID: 1, Title: "Repo Movie"},
+	}
+
+	repo.On("SearchMovies", "repo").Return(expected, nil)
+
+	result, err := svc.SearchMovies("repo")
+
+	require.NoError(t, err)
+	assert.Equal(t, expected, result)
+	repo.AssertExpectations(t)
+	kpMock.AssertNotCalled(t, "SearchByKeyword", mock.Anything, mock.Anything)
+}
+
+func TestSearchMovies_FallsBackToKinopoiskAndAggregatesPages(t *testing.T) {
+	repo := new(MockRepo)
+	kpMock := new(MockKP)
+	svc := newTestSvc(repo, kpMock, nil)
+
+	pageOne := []kp.Film{
+		{
+			KinopoiskID: 101,
+			NameRu:      "Movie One",
+			Year:        json.Number("2020"),
+			Description: "First page film",
+			PosterURL:   "https://img/1.jpg",
+		},
+	}
+	pageTwo := []kp.Film{
+		{
+			KinopoiskID: 202,
+			NameRu:      "Movie Two",
+			Year:        json.Number("2021"),
+			Description: "Second page film",
+			PosterURL:   "https://img/2.jpg",
+		},
+	}
+
+	repo.On("SearchMovies", "matrix").Return([]models.Movie{}, nil)
+	kpMock.On("SearchByKeyword", "matrix", 1).Return(pageOne, 2, nil)
+	kpMock.On("SearchByKeyword", "matrix", 2).Return(pageTwo, 2, nil)
+	repo.On("UpsertMovie", mock.MatchedBy(func(m *models.Movie) bool {
+		return m.ID == 101 && m.Title == "Movie One" && m.Year == 2020
+	})).Return(nil)
+	repo.On("UpsertMovie", mock.MatchedBy(func(m *models.Movie) bool {
+		return m.ID == 202 && m.Title == "Movie Two" && m.Year == 2021
+	})).Return(nil)
+
+	result, err := svc.SearchMovies("matrix")
+
+	require.NoError(t, err)
+	require.Len(t, result, 2)
+	assert.Equal(t, int64(101), result[0].ID)
+	assert.Equal(t, int64(202), result[1].ID)
+	assert.Equal(t, "First page film", result[0].Description)
+	assert.Equal(t, "https://img/2.jpg", result[1].PosterURL)
+	repo.AssertExpectations(t)
+	kpMock.AssertExpectations(t)
+}
+
+func TestSearchMovies_KinopoiskFirstPageError(t *testing.T) {
+	repo := new(MockRepo)
+	kpMock := new(MockKP)
+	svc := newTestSvc(repo, kpMock, nil)
+
+	repo.On("SearchMovies", "broken").Return([]models.Movie{}, nil)
+	kpMock.On("SearchByKeyword", "broken", 1).Return(nil, 0, errors.New("kinopoisk unavailable"))
+
+	result, err := svc.SearchMovies("broken")
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "kinopoisk unavailable")
+	repo.AssertExpectations(t)
+	kpMock.AssertExpectations(t)
+}
+
+func TestSearchMovies_SkipsBrokenSecondPage(t *testing.T) {
+	repo := new(MockRepo)
+	kpMock := new(MockKP)
+	svc := newTestSvc(repo, kpMock, nil)
+
+	pageOne := []kp.Film{
+		{
+			KinopoiskID: 303,
+			NameRu:      "Page One",
+			Year:        json.Number("2022"),
+		},
+	}
+
+	repo.On("SearchMovies", "partial").Return([]models.Movie{}, nil)
+	kpMock.On("SearchByKeyword", "partial", 1).Return(pageOne, 2, nil)
+	kpMock.On("SearchByKeyword", "partial", 2).Return(nil, 2, errors.New("page 2 failed"))
+	repo.On("UpsertMovie", mock.MatchedBy(func(m *models.Movie) bool {
+		return m.ID == 303 && m.Title == "Page One" && m.Year == 2022
+	})).Return(nil)
+
+	result, err := svc.SearchMovies("partial")
+
+	require.NoError(t, err)
+	require.Len(t, result, 1)
+	assert.Equal(t, int64(303), result[0].ID)
+	repo.AssertExpectations(t)
+	kpMock.AssertExpectations(t)
+}
+
+func TestGetWatchlist_Success(t *testing.T) {
+	repo := new(MockRepo)
+	svc := newTestSvc(repo, nil, nil)
+
+	expected := []models.WatchlistItem{
+		{MovieID: 10, Title: "Interstellar"},
+		{MovieID: 11, Title: "Arrival"},
+	}
+	repo.On("GetWatchlist", int64(5)).Return(expected, nil)
+
+	result, err := svc.GetWatchlist(5)
+
+	require.NoError(t, err)
+	assert.Equal(t, expected, result)
+	repo.AssertExpectations(t)
+}
+
+func TestRemoveFromWatchlist_Success(t *testing.T) {
+	repo := new(MockRepo)
+	svc := newTestSvc(repo, nil, nil)
+
+	repo.On("RemoveFromWatchlist", int64(5), int64(10)).Return(nil)
+
+	err := svc.RemoveFromWatchlist(5, 10)
+
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
 func TestRatings_FullCycle(t *testing.T) {
 	repo := new(MockRepo)
 	svc := newTestSvc(repo, nil, nil)
