@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 )
 
@@ -15,12 +16,17 @@ type Client struct {
 }
 
 func NewClient(apiKey string) *Client {
-	return &Client{
-		httpClient: &http.Client{Timeout: 10 * time.Second},
-		apiKey:     apiKey,
-		baseURL:    "https://kinopoiskapiunofficial.tech/api/v2.2",
-	}
+    baseURL := os.Getenv("KINOPOISK_BASE_URL")
+    if baseURL == "" {
+        baseURL = "https://kinopoiskapiunofficial.tech/api/v2.2"
+    }
+    return &Client{
+        httpClient: &http.Client{Timeout: 10 * time.Second},
+        apiKey:     apiKey,
+        baseURL:    baseURL,
+    }
 }
+// Добавить импорт "os"
 
 type Film struct {
 	KinopoiskID     int64       `json:"kinopoiskId"`

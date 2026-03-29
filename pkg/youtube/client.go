@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 )
 
@@ -15,12 +16,17 @@ type Client struct {
 }
 
 func NewClient(apiKey string) *Client {
-	return &Client{
-		httpClient: &http.Client{Timeout: 10 * time.Second},
-		apiKey:     apiKey,
-		baseURL:    "https://www.googleapis.com/youtube/v3",
-	}
+    baseURL := os.Getenv("YOUTUBE_BASE_URL")
+    if baseURL == "" {
+        baseURL = "https://www.googleapis.com/youtube/v3"
+    }
+    return &Client{
+        httpClient: &http.Client{Timeout: 10 * time.Second},
+        apiKey:     apiKey,
+        baseURL:    baseURL,
+    }
 }
+// Добавить импорт "os"
 
 type searchResponse struct {
 	NextPageToken string `json:"nextPageToken"`
