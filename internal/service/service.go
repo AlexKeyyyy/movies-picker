@@ -10,6 +10,7 @@ import (
 	"github.com/AlexKeyyyy/movies-picker/internal/models"
 	"github.com/AlexKeyyyy/movies-picker/pkg/kinopoisk"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -44,7 +45,8 @@ func (s *Service) Register(email, password string) (*models.User, error) {
 	}
 	user := &models.User{Email: email, PasswordHash: string(hashed)}
 	if err := s.repo.CreateUser(user); err != nil {
-		if err.Error() == "user already exists" {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
 			return nil, fmt.Errorf("user already exists")
 		}
 		return nil, err
