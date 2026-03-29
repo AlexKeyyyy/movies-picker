@@ -8,10 +8,10 @@ import (
 )
 
 type AuthHandler struct {
-	svc *service.Service
+	svc service.AuthIface
 }
 
-func NewAuthHandler(svc *service.Service) *AuthHandler {
+func NewAuthHandler(svc service.AuthIface) *AuthHandler {
 	return &AuthHandler{svc: svc}
 }
 
@@ -26,7 +26,15 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	user, err := h.svc.Register(req.Email, req.Password)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusConflict)
+		msg := err.Error()
+		switch msg {
+		case "email is required", "password is required", "invalid email format":
+			http.Error(w, msg, http.StatusBadRequest)
+		case "user already exists":
+			http.Error(w, msg, http.StatusConflict)
+		default:
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
 		return
 	}
 	w.WriteHeader(http.StatusCreated)

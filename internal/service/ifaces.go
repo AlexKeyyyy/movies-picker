@@ -35,3 +35,13 @@ type KPIface interface {
 type YTIface interface {
 	SearchReviews(keyword string, maxResultsPerPage int) ([]yt.ReviewResult, error)
 }
+
+type AuthIface interface {
+	Register(email, password string) (*models.User, error)
+	Login(email, password string) (string, error)
+}
+
+type UserIface interface {
+	GetProfile(userID int64) (*models.User, error)
+	UpdateProfile(userID int64, email, password string) (*models.User, error)
+}
