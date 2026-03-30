@@ -21,12 +21,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: e2e/package-lock.json
+
+      - name: Download Go modules
+        run: go mod download
+
+      - name: Run unit tests with artifacts
+        run: |
+          mkdir -p artifacts
+          set -o pipefail
+          go test ./internal/... ./pkg/... -json -coverprofile=coverage_unit_all 2>&1 | tee artifacts/unit-tests.jsonl
+          go tool cover "-func=coverage_unit_all" | tee artifacts/unit-coverage.txt
 
       - name: Install Docker dependencies
         run: |
@@ -60,6 +75,14 @@ jobs:
           docker compose logs frontend api
           exit 1
 
+      - name: Run integration tests with artifacts
+        env:
+          API_URL: http://localhost:8080
+          MOCK_SERVER_URL: http://localhost:9090
+        run: |
+          set -o pipefail
+          go test ./test/integration/... -json -timeout 3m 2>&1 | tee artifacts/integration-tests.jsonl
+
       - name: Install E2E dependencies
         working-directory: e2e
         run: npm ci
@@ -71,6 +94,30 @@ jobs:
       - name: Run system tests
         working-directory: e2e
         run: npx playwright test
+
+      - name: Generate unified CI test report
+        run: |
+          python3 scripts/render_ci_test_report.py \
+            --unit-json artifacts/unit-tests.jsonl \
+            --unit-coverage artifacts/unit-coverage.txt \
+            --integration-json artifacts/integration-tests.jsonl \
+            --e2e-junit e2e/test-results/results.xml \
+            --output report/generated/ci-all-tests-report.html \
+            --title "Movies Picker CI Report: Unit + Integration + E2E"
+
+      - name: Add report note to job summary
+        run: |
+          echo "## Unified Test Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "Artifact: \`all-tests-report\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Playwright artifact: \`playwright-report\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload unified test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-tests-report
+          path: report/generated/ci-all-tests-report.html
+          if-no-files-found: error
 
       - name: Upload Playwright report
         if: always()
