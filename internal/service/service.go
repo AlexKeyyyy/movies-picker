@@ -4,11 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"regexp"
 	"time"
 
 	"github.com/AlexKeyyyy/movies-picker/internal/models"
 	"github.com/AlexKeyyyy/movies-picker/pkg/kinopoisk"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -25,12 +27,28 @@ func NewService(repo RepoIface, kp KPIface, yt YTIface, jwtSecret string) *Servi
 
 // --- Auth ---
 func (s *Service) Register(email, password string) (*models.User, error) {
+	if email == "" {
+		return nil, fmt.Errorf("email is required")
+	}
+	if password == "" {
+		return nil, fmt.Errorf("password is required")
+	}
+
+	re := regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
+	if !re.MatchString(email) {
+		return nil, fmt.Errorf("invalid email format")
+	}
+
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
 	user := &models.User{Email: email, PasswordHash: string(hashed)}
 	if err := s.repo.CreateUser(user); err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			return nil, fmt.Errorf("user already exists")
+		}
 		return nil, err
 	}
 	return user, nil

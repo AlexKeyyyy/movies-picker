@@ -9,10 +9,10 @@ import (
 )
 
 type UserHandler struct {
-	svc *service.Service
+	svc service.UserIface
 }
 
-func NewUserHandler(svc *service.Service) *UserHandler {
+func NewUserHandler(svc service.UserIface) *UserHandler {
 	return &UserHandler{svc: svc}
 }
 
