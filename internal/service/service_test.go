@@ -443,6 +443,54 @@ func TestListMovies_SizeExceedsMaxBecomesDefault(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+func TestListMovies_SizeExceedsMinBecomesDefault(t *testing.T) {
+	repo := new(MockRepo)
+	svc := newTestSvc(repo, nil, nil)
+
+	repo.On("ListMovies", 0, 20).Return([]models.Movie{}, nil)
+
+	_, err := svc.ListMovies(1, 0)
+
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
+func TestListMovies_Normal1(t *testing.T) {
+	repo := new(MockRepo)
+	svc := newTestSvc(repo, nil, nil)
+
+	repo.On("ListMovies", 0, 1).Return([]models.Movie{}, nil)
+
+	_, err := svc.ListMovies(1, 1)
+
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
+func TestListMovies_Normal36(t *testing.T) {
+	repo := new(MockRepo)
+	svc := newTestSvc(repo, nil, nil)
+
+	repo.On("ListMovies", 0, 36).Return([]models.Movie{}, nil)
+
+	_, err := svc.ListMovies(1, 36)
+
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
+func TestListMovies_Normal100(t *testing.T) {
+	repo := new(MockRepo)
+	svc := newTestSvc(repo, nil, nil)
+
+	repo.On("ListMovies", 0, 100).Return([]models.Movie{}, nil)
+
+	_, err := svc.ListMovies(1, 100)
+
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
 // Тест 16 — Ошибка репозитория при получении списка
 // Техника: негативный сценарий — сбой БД
 func TestListMovies_RepoError(t *testing.T) {
